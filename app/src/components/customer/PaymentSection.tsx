@@ -1,48 +1,23 @@
+'use client';
+
 import { useState } from 'react';
 import Button from '../ui/Button';
-import { registerPasskey, authenticatePasskey } from '@/lib/passkey';
 
 interface PaymentSectionProps {
   reservationId: string;
-  amount: number;
-  onPaymentComplete: () => void;
+  onSuccess: () => void;
 }
 
-export default function PaymentSection({
-  reservationId,
-  amount,
-  onPaymentComplete,
-}: PaymentSectionProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isPasskeyRegistered, setIsPasskeyRegistered] = useState(false);
-
-  const handlePasskeyRegistration = async () => {
-    try {
-      setIsLoading(true);
-      await registerPasskey(reservationId);
-      setIsPasskeyRegistered(true);
-    } catch (error) {
-      console.error('Passkey registration error:', error);
-      // TODO: Show error toast
-    } finally {
-      setIsLoading(false);
-    }
-  };
+export default function PaymentSection({ reservationId, onSuccess }: PaymentSectionProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handlePayment = async () => {
     try {
-      setIsLoading(true);
+      setLoading(true);
+      setError(null);
 
-      // Authenticate with Passkey
-      const isAuthenticated = await authenticatePasskey();
-      if (!isAuthenticated) {
-        throw new Error('Passkey authentication failed');
-      }
-
-      // TODO: Get wallet address from user's wallet
-      const walletAddress = 'G...'; // Placeholder
-
-      // Confirm payment
+      // Stellar cüzdan bağlantısı ve ödeme işlemi burada yapılacak
       const response = await fetch('/api/stellar/confirm-payment', {
         method: 'POST',
         headers: {
@@ -50,58 +25,45 @@ export default function PaymentSection({
         },
         body: JSON.stringify({
           reservationId,
-          sourceSecretKey: walletAddress,
-          amount: amount.toString(),
+          amount: '1', // 1 USDC
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Payment confirmation failed');
+        throw new Error('Ödeme işlemi başarısız oldu');
       }
 
-      onPaymentComplete();
-    } catch (error) {
-      console.error('Payment error:', error);
-      // TODO: Show error toast
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ödeme sırasında bir hata oluştu');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border space-y-4">
-      <div>
-        <h2 className="text-xl font-semibold mb-2">Ödeme</h2>
+    <div className="space-y-4">
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">Ödeme Bilgileri</h2>
         <p className="text-gray-600">
-          Rezervasyon ücreti: {amount} USDC
+          Rezervasyonunuzu onaylamak için 1 USDC ödeme yapmanız gerekmektedir.
+          Bu ücret, rezervasyonunuzu garanti altına almak için alınmaktadır.
         </p>
       </div>
 
-      {!isPasskeyRegistered ? (
-        <div className="space-y-4">
-          <p className="text-sm text-gray-500">
-            Ödeme yapabilmek için önce Passkey'inizi kaydetmeniz gerekmektedir.
-          </p>
-          <Button
-            onClick={handlePasskeyRegistration}
-            isLoading={isLoading}
-          >
-            Passkey Kaydet
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <p className="text-sm text-gray-500">
-            Passkey kaydınız tamamlandı. Ödeme yapmak için cüzdanınızı bağlayın.
-          </p>
-          <Button
-            onClick={handlePayment}
-            isLoading={isLoading}
-          >
-            Cüzdanı Bağla ve Öde
-          </Button>
+      {error && (
+        <div className="bg-red-50 text-red-600 p-4 rounded-lg">
+          {error}
         </div>
       )}
+
+      <Button
+        onClick={handlePayment}
+        disabled={loading}
+        className="w-full"
+      >
+        {loading ? 'İşlem Yapılıyor...' : '1 USDC ile Onayla ve Öde'}
+      </Button>
     </div>
   );
 } 

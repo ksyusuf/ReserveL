@@ -11,6 +11,12 @@ export const generateReservationId = (): string => {
   return `RES-${timestamp}-${randomStr}`.toUpperCase();
 };
 
+export const generateConfirmationToken = (): string => {
+  const timestamp = Date.now().toString(36);
+  const randomStr = Math.random().toString(36).substring(2, 8);
+  return `CONF-${timestamp}-${randomStr}`.toUpperCase();
+};
+
 export const formatDate = (date: Date): string => {
   return date.toLocaleDateString('tr-TR', {
     year: 'numeric',

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { connectDB, Reservation } from '@/lib/db';
-import { generateReservationId } from '@/lib/utils';
+import { generateReservationId, generateConfirmationToken } from '@/lib/utils';
 
 export async function POST(request: Request) {
   try {
@@ -12,9 +12,13 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log('Gelen rezervasyon verisi:', JSON.stringify(body, null, 2));
     
+    const confirmationToken = generateConfirmationToken();
+    const confirmationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/confirm/${confirmationToken}`;
+    
     const reservation = new Reservation({
       ...body,
       reservationId: generateReservationId(),
+      confirmationToken,
     });
     
     console.log('Oluşturulan rezervasyon objesi:', JSON.stringify(reservation, null, 2));
@@ -25,7 +29,10 @@ export async function POST(request: Request) {
     console.log('Rezervasyon başarıyla kaydedildi');
     console.log('=== Rezervasyon Oluşturma Tamamlandı ===');
     
-    return NextResponse.json(reservation, { status: 201 });
+    return NextResponse.json({
+      ...reservation.toObject(),
+      confirmationUrl,
+    }, { status: 201 });
   } catch (error) {
     console.error('=== Rezervasyon Oluşturma Hatası ===');
     console.error('Hata detayı:', error);

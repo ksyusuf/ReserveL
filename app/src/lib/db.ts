@@ -102,6 +102,11 @@ const ReservationSchema = new mongoose.Schema({
     enum: ['pending', 'confirmed', 'cancelled'],
     default: 'pending',
   },
+  confirmationToken: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
   loyaltyTokensSent: {
     type: Boolean,
     default: false,

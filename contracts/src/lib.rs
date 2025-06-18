@@ -1,207 +1,199 @@
 #![no_std]
-
 use soroban_sdk::{
-    contractimpl, contracttype, symbol_short,
-    Address, Env, IntoVal, TryFromVal,
-    Vec, Map, Symbol,
-};
+    contract, contractimpl, contracttype, symbol_short, token, Address, Env, Map, Symbol,
+}; // Removed IntoVal
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ReservationStatus {
+    Pending,
+    Confirmed,
+    NoShow,
+    Completed,
+    Cancelled, // Gelecek için yer tutucu
+}
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Reservation {
-    pub id: Symbol,
-    pub customer: Address,
-    pub business: Address,
-    pub timestamp: u64,
-    pub status: Symbol,
-    pub payment_status: Symbol,
-    pub loyalty_tokens_sent: bool,
+    pub business_id: Address,
+    pub customer_id: Address,
+    pub reservation_time: u64, // Unix timestamp
+    pub party_size: u32,
+    pub payment_amount: i128, // Amount in asset smallest unit (e.g., stroops for XLM, or 10^7 for USDC)
+    pub payment_asset: Address, // Address of the asset contract (e.g., USDC)
+    pub status: ReservationStatus,
+    pub loyalty_issued: bool,
 }
 
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Payment {
-    pub amount: i128,
-    pub asset: Symbol,
-    pub timestamp: u64,
-}
+// Data Keys for storage
+const RESERVATIONS: Symbol = symbol_short!("reserves");
+const NEXT_RESERVATION_ID: Symbol = symbol_short!("next_id");
+const LOYALTY_TOKEN_ID: Symbol = symbol_short!("loyalty"); // Address of the loyalty token contract
+const OWNER: Symbol = symbol_short!("owner"); // Contract owner (deployer)
+
+#[contract]
+pub struct ReserveLContract;
 
 #[contractimpl]
-pub struct Contract;
-
-impl Contract {
-    // Contract initialization
-    pub fn initialize(env: &Env) {
-        // Initialize contract storage
-        env.storage().set(&symbol_short!("initialized"), &true);
+impl ReserveLContract {
+    /// Initializes the contract with the business owner and loyalty token ID.
+    /// This should be called only once after deployment.
+    pub fn initialize(env: Env, owner: Address, loyalty_token_id: Address) {
+        if env.storage().instance().has(&OWNER) {
+            panic!("Contract already initialized");
+        }
+        env.storage().instance().set(&OWNER, &owner);
+        env.storage().instance().set(&LOYALTY_TOKEN_ID, &loyalty_token_id);
     }
 
-    // Create a new reservation
+    /// Creates a new reservation record in the contract.
+    /// This function is called by the business's backend.
+    /// Returns the new reservation ID.
     pub fn create_reservation(
-        env: &Env,
-        customer: Address,
-        business: Address,
-    ) -> Reservation {
-        let id = symbol_short!("temp"); // TODO: Generate unique ID
+        env: Env,
+        business_id: Address,
+        customer_id: Address,
+        reservation_time: u64,
+        party_size: u32,
+        payment_amount: i128,
+        payment_asset: Address,
+    ) -> u64 {
+        business_id.require_auth(); // Only the business can create reservations for itself
+
+        let mut reservations: Map<u64, Reservation> = env
+            .storage()
+            .persistent()
+            .get(&RESERVATIONS)
+            .unwrap_or_else(|| Map::new(&env)); // Corrected: Use unwrap_or_else with Map::new
+
+        let next_id: u64 = env.storage().persistent().get(&NEXT_RESERVATION_ID).unwrap_or(0);
+
         let reservation = Reservation {
-            id,
-            customer,
-            business,
-            timestamp: env.ledger().timestamp(),
-            status: symbol_short!("pending"),
-            payment_status: symbol_short!("pending"),
-            loyalty_tokens_sent: false,
+            business_id,
+            customer_id,
+            reservation_time,
+            party_size,
+            payment_amount,
+            payment_asset,
+            status: ReservationStatus::Pending,
+            loyalty_issued: false,
         };
-        
-        // Store reservation
-        env.storage().set(&id, &reservation);
-        
-        reservation
+
+        reservations.set(next_id, reservation);
+        env.storage().persistent().set(&RESERVATIONS, &reservations);
+        env.storage().persistent().set(&NEXT_RESERVATION_ID, &(next_id + 1));
+
+        next_id
     }
 
-    // Get reservation by ID
-    pub fn get_reservation(env: &Env, id: Symbol) -> Option<Reservation> {
-        env.storage().get(&id)
-    }
+    /// Confirms a reservation by transferring the payment from the customer to the business.
+    /// This function is called by the customer's frontend via API.
+    pub fn confirm_reservation(env: Env, reservation_id: u64, customer_id: Address) {
+        customer_id.require_auth();
 
-    // Update reservation status
-    pub fn update_reservation_status(
-        env: &Env,
-        id: Symbol,
-        status: Symbol,
-    ) -> bool {
-        if let Some(mut reservation) = env.storage().get(&id) {
-            reservation.status = status;
-            env.storage().set(&id, &reservation);
-            true
-        } else {
-            false
+        let mut reservations: Map<u64, Reservation> = env
+            .storage()
+            .persistent()
+            .get(&RESERVATIONS)
+            .unwrap_or_else(|| Map::new(&env)); // Corrected: Use unwrap_or_else with Map::new
+
+        let mut reservation = reservations
+            .get(reservation_id)
+            .expect("Reservation not found");
+
+        if reservation.status != ReservationStatus::Pending {
+            panic!("Reservation is not in pending state");
         }
-    }
-
-    // Process payment for reservation
-    pub fn process_payment(
-        env: &Env,
-        id: Symbol,
-        amount: i128,
-        asset: Symbol,
-    ) -> bool {
-        if let Some(mut reservation) = env.storage().get(&id) {
-            // Create payment record
-            let payment = Payment {
-                amount,
-                asset,
-                timestamp: env.ledger().timestamp(),
-            };
-            
-            // Store payment
-            env.storage().set(&symbol_short!("payment"), &payment);
-            
-            // Update reservation status
-            reservation.payment_status = symbol_short!("completed");
-            env.storage().set(&id, &reservation);
-            
-            true
-        } else {
-            false
+        if reservation.customer_id != customer_id {
+            panic!("Unauthorized: Not the customer for this reservation");
         }
+
+        // Perform the token transfer
+        let token_client = token::Client::new(&env, &reservation.payment_asset);
+        token_client.transfer(
+            &customer_id,
+            &reservation.business_id,
+            &reservation.payment_amount,
+        );
+
+        reservation.status = ReservationStatus::Confirmed;
+        reservations.set(reservation_id, reservation);
+        env.storage().persistent().set(&RESERVATIONS, &reservations);
     }
 
-    // Issue loyalty tokens
-    pub fn issue_loyalty_tokens(
-        env: &Env,
-        id: Symbol,
-        amount: i128,
-    ) -> bool {
-        if let Some(mut reservation) = env.storage().get(&id) {
-            // Check if reservation is confirmed and payment is completed
-            if reservation.status == symbol_short!("confirmed") 
-                && reservation.payment_status == symbol_short!("completed")
-                && !reservation.loyalty_tokens_sent {
-                
-                // TODO: Implement actual token issuance logic
-                // This would typically involve calling the token contract
-                
-                // Update reservation
-                reservation.loyalty_tokens_sent = true;
-                env.storage().set(&id, &reservation);
-                
-                true
-            } else {
-                false
+    /// Updates the status of a reservation (e.g., "arrived" or "no-show").
+    /// This function is called by the business's backend.
+    pub fn update_reservation_status(env: Env, reservation_id: u64, new_status: ReservationStatus) {
+        let mut reservations: Map<u64, Reservation> = env
+            .storage()
+            .persistent()
+            .get(&RESERVATIONS)
+            .unwrap_or_else(|| Map::new(&env)); // Corrected: Use unwrap_or_else with Map::new
+
+        let mut reservation = reservations
+            .get(reservation_id)
+            .expect("Reservation not found");
+
+        reservation.business_id.require_auth(); // Only the business owner can update their reservation status
+
+        // Only allow status transitions from Confirmed
+        if reservation.status != ReservationStatus::Confirmed {
+            panic!("Cannot update status for a non-confirmed reservation");
+        }
+
+        match new_status {
+            ReservationStatus::Completed => {
+                // If customer arrived, issue loyalty tokens
+                if !reservation.loyalty_issued {
+                    let loyalty_token_id: Address = env.storage().instance().get(&LOYALTY_TOKEN_ID).expect("Loyalty token not set");
+                    let loyalty_client = token::Client::new(&env, &loyalty_token_id);
+                    let loyalty_amount: i128 = 100 * 10i128.pow(7); // Example: 100 loyalty tokens (assuming 7 decimals)
+                    
+                    let minter_address: Address = env.storage().instance().get(&OWNER).expect("Owner not set, cannot issue loyalty tokens");
+                    minter_address.require_auth(); // Ensure the minter account authorizes this transfer
+
+                    // Transfer loyalty tokens from the minter_address (which should have pre-minted tokens)
+                    // to the customer.
+                    loyalty_client.transfer(&minter_address, &reservation.customer_id, &loyalty_amount);
+
+                    reservation.loyalty_issued = true;
+                }
+                reservation.status = new_status;
             }
-        } else {
-            false
+            ReservationStatus::NoShow => {
+                // If no-show, the initial payment remains with the business.
+                // No loyalty tokens are issued.
+                reservation.status = new_status;
+            }
+            _ => panic!("Invalid status update"), // Prevent other status changes
         }
+
+        reservations.set(reservation_id, reservation);
+        env.storage().persistent().set(&RESERVATIONS, &reservations);
+    }
+
+    /// Retrieves reservation details.
+    pub fn get_reservation(env: Env, reservation_id: u64) -> Option<Reservation> {
+        let reservations: Map<u64, Reservation> = env
+            .storage()
+            .persistent()
+            .get(&RESERVATIONS)
+            .unwrap_or_else(|| Map::new(&env)); // Corrected: Use unwrap_or_else with Map::new
+        reservations.get(reservation_id)
+    }
+
+    /// Helper function to get the loyalty token ID
+    pub fn get_loyalty_token_id(env: Env) -> Address {
+        env.storage().instance().get(&LOYALTY_TOKEN_ID).expect("Loyalty token not set")
+    }
+
+    /// Helper function to get the contract owner
+    pub fn get_owner(env: Env) -> Address {
+        env.storage().instance().get(&OWNER).expect("Owner not set")
     }
 }
 
+// Unit tests for the contract (can be expanded)
 #[cfg(test)]
-mod test {
-    use super::*;
-    use soroban_sdk::testutils::Address as _;
-
-    #[test]
-    fn test_initialize() {
-        let env = Env::default();
-        let contract = Contract;
-        contract.initialize(&env);
-        
-        assert!(env.storage().get(&symbol_short!("initialized")).unwrap());
-    }
-
-    #[test]
-    fn test_create_reservation() {
-        let env = Env::default();
-        let contract = Contract;
-        let customer = Address::generate(&env);
-        let business = Address::generate(&env);
-
-        let reservation = contract.create_reservation(&env, customer, business);
-        assert_eq!(reservation.customer, customer);
-        assert_eq!(reservation.business, business);
-        assert_eq!(reservation.status, symbol_short!("pending"));
-        assert_eq!(reservation.payment_status, symbol_short!("pending"));
-        assert!(!reservation.loyalty_tokens_sent);
-    }
-
-    #[test]
-    fn test_process_payment() {
-        let env = Env::default();
-        let contract = Contract;
-        let customer = Address::generate(&env);
-        let business = Address::generate(&env);
-
-        let reservation = contract.create_reservation(&env, customer, business);
-        let success = contract.process_payment(&env, reservation.id, 100, symbol_short!("USDC"));
-        
-        assert!(success);
-        
-        let updated_reservation = contract.get_reservation(&env, reservation.id).unwrap();
-        assert_eq!(updated_reservation.payment_status, symbol_short!("completed"));
-    }
-
-    #[test]
-    fn test_issue_loyalty_tokens() {
-        let env = Env::default();
-        let contract = Contract;
-        let customer = Address::generate(&env);
-        let business = Address::generate(&env);
-
-        let reservation = contract.create_reservation(&env, customer, business);
-        
-        // Process payment
-        contract.process_payment(&env, reservation.id, 100, symbol_short!("USDC"));
-        
-        // Update status to confirmed
-        contract.update_reservation_status(&env, reservation.id, symbol_short!("confirmed"));
-        
-        // Issue loyalty tokens
-        let success = contract.issue_loyalty_tokens(&env, reservation.id, 10);
-        
-        assert!(success);
-        
-        let updated_reservation = contract.get_reservation(&env, reservation.id).unwrap();
-        assert!(updated_reservation.loyalty_tokens_sent);
-    }
-} 
+mod test;
