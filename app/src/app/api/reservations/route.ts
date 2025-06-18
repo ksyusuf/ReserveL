@@ -12,6 +12,18 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log('Gelen rezervasyon verisi:', JSON.stringify(body, null, 2));
     
+    // Gerekli alanların kontrolü
+    const requiredFields = ['customerName', 'customerPhone', 'date', 'time', 'numberOfPeople', 'businessId', 'customerId'];
+    const missingFields = requiredFields.filter(field => !body[field]);
+    
+    if (missingFields.length > 0) {
+      console.error('Eksik alanlar:', missingFields);
+      return NextResponse.json(
+        { error: `Eksik alanlar: ${missingFields.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
     const confirmationToken = generateConfirmationToken();
     const confirmationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/confirm/${confirmationToken}`;
     
@@ -19,6 +31,7 @@ export async function POST(request: Request) {
       ...body,
       reservationId: generateReservationId(),
       confirmationToken,
+      businessName: process.env.NEXT_PUBLIC_BUSINESS_NAME || 'İşletme Adı',
     });
     
     console.log('Oluşturulan rezervasyon objesi:', JSON.stringify(reservation, null, 2));
@@ -40,7 +53,10 @@ export async function POST(request: Request) {
     console.error('=== Hata Detayları Sonu ===');
     
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Rezervasyon oluşturulurken bir hata oluştu' },
+      { 
+        error: error instanceof Error ? error.message : 'Rezervasyon oluşturulurken bir hata oluştu',
+        details: error instanceof Error ? error.stack : undefined
+      },
       { status: 500 }
     );
   }

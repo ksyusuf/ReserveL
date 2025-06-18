@@ -17,7 +17,7 @@ pub enum ReservationStatus {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Reservation {
     pub business_id: Address,
-    pub customer_id: Address,
+    pub customer_id: Option<Address>,
     pub reservation_time: u64, // Unix timestamp
     pub party_size: u32,
     pub payment_amount: i128, // Amount in asset smallest unit (e.g., stroops for XLM, or 10^7 for USDC)
@@ -53,7 +53,6 @@ impl ReserveLContract {
     pub fn create_reservation(
         env: Env,
         business_id: Address,
-        customer_id: Address,
         reservation_time: u64,
         party_size: u32,
         payment_amount: i128,
@@ -65,13 +64,13 @@ impl ReserveLContract {
             .storage()
             .persistent()
             .get(&RESERVATIONS)
-            .unwrap_or_else(|| Map::new(&env)); // Corrected: Use unwrap_or_else with Map::new
+            .unwrap_or_else(|| Map::new(&env));
 
         let next_id: u64 = env.storage().persistent().get(&NEXT_RESERVATION_ID).unwrap_or(0);
 
         let reservation = Reservation {
             business_id,
-            customer_id,
+            customer_id: None,
             reservation_time,
             party_size,
             payment_amount,
@@ -96,7 +95,7 @@ impl ReserveLContract {
             .storage()
             .persistent()
             .get(&RESERVATIONS)
-            .unwrap_or_else(|| Map::new(&env)); // Corrected: Use unwrap_or_else with Map::new
+            .unwrap_or_else(|| Map::new(&env));
 
         let mut reservation = reservations
             .get(reservation_id)
@@ -105,8 +104,16 @@ impl ReserveLContract {
         if reservation.status != ReservationStatus::Pending {
             panic!("Reservation is not in pending state");
         }
-        if reservation.customer_id != customer_id {
-            panic!("Unauthorized: Not the customer for this reservation");
+        match &reservation.customer_id {
+            Some(assigned_id) => {
+                if *assigned_id != customer_id {
+                    panic!("Unauthorized: Not the customer for this reservation");
+                }
+            },
+            None => {
+                // İlk kez müşteri ataması ve onay aynı anda yapılacak
+                reservation.customer_id = Some(customer_id.clone());
+            }
         }
 
         // Perform the token transfer
@@ -155,7 +162,7 @@ impl ReserveLContract {
 
                     // Transfer loyalty tokens from the minter_address (which should have pre-minted tokens)
                     // to the customer.
-                    loyalty_client.transfer(&minter_address, &reservation.customer_id, &loyalty_amount);
+                    loyalty_client.transfer(&minter_address, &reservation.customer_id.clone().expect("Customer not assigned"), &loyalty_amount);
 
                     reservation.loyalty_issued = true;
                 }

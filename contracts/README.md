@@ -50,7 +50,7 @@ Deploy işlemi başarılı olduğunda, terminal size bir kontrat ID'si verecekti
 ## Kontrat ID
 
 ```
-CDHFV27NLOSUEIT7VF5QTQZKEQCWDVTGXLAUEQEOZBT7AVLZJEIBRJGF
+CAGSYHLNLJH6HXNKUXPEWQBQMIJOIZUGSTK766ORDVFU6NWTAJGFZV7V
 ```
 
 ## Kontrat İşlemleri
