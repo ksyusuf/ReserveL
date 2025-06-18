@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { getReservationDetails, confirmReservation } from '@/lib/stellar';
+import { getReservation, confirmReservation } from '@/lib/soroban';
 
 interface ReservationDetails {
   customerName: string;
@@ -11,6 +11,8 @@ interface ReservationDetails {
   time: string;
   notes: string;
   status: string;
+  reservationId: string;
+  customerId: string;
 }
 
 export default function ConfirmReservation() {
@@ -23,34 +25,42 @@ export default function ConfirmReservation() {
   useEffect(() => {
     async function loadReservation() {
       try {
-        const result = await getReservationDetails(token as string);
-        if (result.success && result.details) {
-          const details: ReservationDetails = {
-            customerName: String(result.details.customerName || ''),
-            customerPhone: String(result.details.customerPhone || ''),
-            date: String(result.details.date || ''),
-            time: String(result.details.time || ''),
-            notes: String(result.details.notes || ''),
-            status: String(result.details.status || '')
-          };
-          setDetails(details);
-        } else {
+        // Token ile reservation detaylarını API'den çek
+        const res = await fetch(`/api/reservations/confirm/${token}`);
+        if (!res.ok) {
           setError('Rezervasyon detayları alınamadı');
+          setLoading(false);
+          return;
         }
+        const data = await res.json();
+        // reservationId ve customerId'yi de al
+        const details: ReservationDetails = {
+          customerName: String(data.customerName || ''),
+          customerPhone: String(data.customerPhone || ''),
+          date: String(data.date || ''),
+          time: String(data.time || ''),
+          notes: String(data.notes || ''),
+          status: String(data.confirmationStatus || ''),
+          reservationId: String(data.reservationId || ''),
+          customerId: String(data.customerId || ''),
+        };
+        setDetails(details);
       } catch (err) {
         setError('Rezervasyon detayları yüklenirken bir hata oluştu');
       } finally {
         setLoading(false);
       }
     }
-
     loadReservation();
   }, [token]);
 
   const handleConfirm = async () => {
+    if (!details) return;
     setConfirming(true);
     try {
-      const result = await confirmReservation(token as string);
+      // reservationId number olmalı
+      const reservationIdNum = Number(details.reservationId);
+      const result = await confirmReservation(reservationIdNum, details.customerId);
       if (result.success) {
         window.location.href = '/confirm/success';
       } else {

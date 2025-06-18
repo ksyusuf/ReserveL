@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createReservation, connectFreighter } from '@/lib/stellar';
+import { createReservation } from '@/lib/soroban';
+import { getAddress, isConnected as freighterIsConnected } from '@stellar/freighter-api';
 
 interface ReservationFormData {
   customerName: string;
@@ -32,41 +33,6 @@ export default function ReservationForm() {
   const [loading, setLoading] = useState(false);
   const [reservationId, setReservationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isFreighterInstalled, setIsFreighterInstalled] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    // Freighter'ın yüklü olup olmadığını kontrol et
-    const checkFreighter = async () => {
-      try {
-        // @ts-ignore
-        const hasFreighter = typeof window !== 'undefined' && window.freighter !== undefined;
-        console.log('Freighter durumu:', hasFreighter);
-        
-        if (hasFreighter) {
-          // @ts-ignore
-          const isConnected = await window.freighter.isConnected();
-          console.log('Freighter bağlantı durumu:', isConnected);
-          
-          if (!isConnected) {
-            // @ts-ignore
-            await window.freighter.connect();
-            console.log('Freighter bağlantısı başarılı');
-          }
-        }
-        
-        setIsFreighterInstalled(hasFreighter);
-      } catch (error) {
-        console.error('Freighter kontrol hatası:', error);
-        setIsFreighterInstalled(false);
-      }
-    };
-    
-    // Sayfa yüklendiğinde ve her 5 saniyede bir kontrol et
-    checkFreighter();
-    const interval = setInterval(checkFreighter, 5000);
-    
-    return () => clearInterval(interval);
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,18 +40,21 @@ export default function ReservationForm() {
     setError(null);
     
     try {
-      if (!isFreighterInstalled) {
-        throw new Error('Freighter cüzdanı yüklü değil. Lütfen önce Freighter eklentisini yükleyin.');
+      // Freighter bağlantısı @stellar/freighter-api ile doğrudan adres alınıyor
+      let businessId = '';
+      try {
+        const { address } = await getAddress();
+        businessId = address;
+      } catch (err) {
+        console.error('[Freighter] getAddress çağrısında hata:', err);
+        throw new Error('Freighter cüzdanına bağlanılamadı veya adres alınamadı. Lütfen Freighter eklentisini açın ve bağlanın.');
       }
-
-      // Freighter bağlantısını kontrol et
-      const isConnected = await connectFreighter();
-      if (!isConnected) {
-        throw new Error('Freighter cüzdanına bağlanılamadı. Lütfen Freighter eklentisini açın ve bağlanın.');
+      if (!businessId) {
+        throw new Error('Freighter cüzdan adresi alınamadı.');
       }
 
       // Varsayılan değerleri ayarla
-      const defaultCustomerId = 'GDRWXGQZJ3F3V5WJ6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z';
+      const defaultCustomerId = '';
       const defaultPaymentAsset = 'GDRWXGQZJ3F3V5WJ6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z';
 
       // Rezervasyon zamanını Unix timestamp'e çevir
@@ -103,7 +72,7 @@ export default function ReservationForm() {
           date: formData.date,
           time: formData.time,
           numberOfPeople: formData.partySize,
-          businessId: '', // Freighter'dan alınacak
+          businessId: businessId,
           customerId: defaultCustomerId,
           notes: formData.notes || '',
           paymentAmount: formData.paymentAmount,
@@ -121,8 +90,7 @@ export default function ReservationForm() {
 
       // Then, save to smart contract
       const contractResult = await createReservation({
-        businessId: '', // Freighter'dan alınacak
-        customerId: defaultCustomerId,
+        businessId: businessId,
         reservationTime,
         partySize: formData.partySize,
         paymentAmount: formData.paymentAmount * 10000000, // 7 decimal places for Stellar
@@ -161,50 +129,13 @@ export default function ReservationForm() {
         paymentAsset: ''
       });
     } catch (error) {
+      console.error('[Freighter] Rezervasyon oluşturma hatası:', error);
       console.error('Rezervasyon oluşturma hatası:', error);
       setError(error instanceof Error ? error.message : 'Rezervasyon oluşturulurken bir hata oluştu');
     } finally {
       setLoading(false);
     }
   };
-
-  if (isFreighterInstalled === false) {
-    return (
-      <div className="bg-yellow-900 text-white p-6 rounded-lg">
-        <h3 className="text-lg font-semibold mb-2">Freighter Cüzdanı Gerekli</h3>
-        <p className="mb-4">
-          Rezervasyon oluşturmak için Freighter cüzdanı gereklidir. Lütfen aşağıdaki adımları izleyin:
-        </p>
-        <ol className="list-decimal list-inside space-y-2 mb-4">
-          <li>
-            <a 
-              href="https://chrome.google.com/webstore/detail/freighter/bcacfldlkkdogcmkkibnjlakofdplcbk" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-300 hover:text-blue-200"
-            >
-              Chrome için Freighter'ı yükleyin
-            </a>
-          </li>
-          <li>
-            <a 
-              href="https://addons.mozilla.org/en-US/firefox/addon/freighter/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-300 hover:text-blue-200"
-            >
-              Firefox için Freighter'ı yükleyin
-            </a>
-          </li>
-          <li>Tarayıcınızı yenileyin</li>
-          <li>Freighter'ı açın ve bir hesap oluşturun</li>
-        </ol>
-        <p className="text-sm text-gray-300">
-          Freighter, Stellar ağında güvenli işlemler yapmanızı sağlayan bir cüzdan uygulamasıdır.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -265,6 +196,21 @@ export default function ReservationForm() {
           id="time"
           value={formData.time}
           onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+          className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
+          required
+        />
+      </div>
+
+      <div>
+        <label htmlFor="partySize" className="block text-sm font-medium text-gray-300">
+          Kişi Sayısı
+        </label>
+        <input
+          type="number"
+          id="partySize"
+          min={1}
+          value={formData.partySize}
+          onChange={(e) => setFormData({ ...formData, partySize: Number(e.target.value) })}
           className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
           required
         />
