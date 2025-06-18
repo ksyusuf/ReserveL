@@ -67,6 +67,11 @@ const ReservationSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  contractReservationId: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
   businessName: {
     type: String,
     required: true,
