@@ -10,6 +10,7 @@ import {
   Operation,
   Memo,
   rpc,
+  Asset,
 } from '@stellar/stellar-sdk';
 import { signTransaction, requestAccess } from '@stellar/freighter-api';
 import Button from '../ui/Button';
@@ -19,10 +20,11 @@ const SOROBAN_RPC_URL = 'https://soroban-testnet.stellar.org';
 
 interface PaymentSectionProps {
   reservationId: string;
-  onSuccess: () => void;
+  businessId: string;
+  onSuccess: () => void;    
 }
 
-export default function PaymentSection({ reservationId, onSuccess }: PaymentSectionProps) {
+export default function PaymentSection({ reservationId, businessId, onSuccess }: PaymentSectionProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,7 +50,18 @@ export default function PaymentSection({ reservationId, onSuccess }: PaymentSect
         fee: BASE_FEE,
         networkPassphrase: Networks.TESTNET,
         memo: Memo.none(),
-      })
+        })
+          // XLM transferi (native asset)
+          .addOperation(
+            Operation.payment({
+              destination: businessId, // rezervasyon yapan işletme hesabı
+              asset: Asset.native(),
+              amount: "1.0000000", // 1 XLM (stroop değil!)
+            })
+            // aynı transaction içerisinde rezervasyon için ödeme yapıyoruz,
+            // zincir tarafında da takasın gerçekleşmiş gibi kayıt ediyoruz.
+          )
+          // Kontrat çağrısı
         .addOperation(
           Operation.invokeContractFunction({
             contract: CONTRACT_ID,

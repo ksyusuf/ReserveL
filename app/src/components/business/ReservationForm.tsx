@@ -86,7 +86,7 @@ export default function ReservationForm() {
               nativeToScVal(reservation_time, { type: 'u64' }),
               nativeToScVal(formData.partySize, { type: 'u32' }),
               nativeToScVal("10000000", { type: 'i128' }),  // 1 USD
-              new Address("CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA").toScVal(), // USDC için contrac_id
+              nativeToScVal(undefined, { type: 'asset' }) // native asset anlamında
             ],
           })
         )

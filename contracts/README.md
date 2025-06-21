@@ -68,7 +68,7 @@ https://stellar.expert/explorer/testnet/contract/CDHFV27NLOSUEIT7VF5QTQZKEQCWDVT
 stellar cli ile örnek deploy;
 
 stellar contract invoke \
-  --id CD5R6GJX5RAVBBJWEGPLYSREGM2HDY5L23RLMIMY4GK45VLPKC26RYAA \
+  --id CA6V7EYBCZ3KPYGG5FB5L5KNAKPPL3KG2GG6V2ZZEA2L3BA3N66GUFOR \
   --network testnet \
   --source-account alice \
   -- create_reservation \
@@ -77,3 +77,6 @@ stellar contract invoke \
     --party_size 2 \
     --payment_amount 10000000 \
     --payment_asset GC5D6JM4YP3CEZNUZ6FMDD4L26XVUO3GKLCU4SHAYNRTMRWB6FMYRKBC
+
+cli ile deploy;
+stellar contract deploy   --wasm target/wasm32v1-none/release/reservel_contract.wasm   --network testnet --source-account SDBCUEVN5ITAW2UFXMB5RMQBPWBAZMELQU7LHTPXLLB6EFXISUO3LGHA

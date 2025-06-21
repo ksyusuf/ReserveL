@@ -22,7 +22,7 @@ pub struct Reservation {
     pub reservation_time: u64,
     pub party_size: u32,
     pub payment_amount: i128,
-    pub payment_asset: Address,
+    pub payment_asset: Option<Address>,
     pub status: ReservationStatus,
     pub loyalty_issued: bool,
 }
@@ -50,7 +50,7 @@ impl ReserveLContract {
         reservation_time: u64,
         party_size: u32,
         payment_amount: i128,
-        payment_asset: Address,
+        payment_asset: Option<Address>,
     ) -> u64 {
         business_id.require_auth();
 
@@ -71,7 +71,7 @@ impl ReserveLContract {
             reservation_time,
             party_size,
             payment_amount,
-            payment_asset,
+            payment_asset: None,
             status: ReservationStatus::Pending,
             loyalty_issued: false,
         };
@@ -109,8 +109,16 @@ impl ReserveLContract {
             _ => {}
         }
 
-        let token_client = token::Client::new(&env, &reservation.payment_asset);
-        token_client.transfer(&customer_id, &reservation.business_id, &reservation.payment_amount);
+        match &reservation.payment_asset {
+            Some(asset_addr) => {
+                let token_client = token::Client::new(&env, asset_addr);
+                token_client.transfer(&customer_id, &reservation.business_id, &reservation.payment_amount);
+            }
+            None => {
+                // JS tarafından XLM gönderildiği varsayılıyor.
+                // Burada sadece reservation logic işlenir.
+            }
+        }
 
         reservation.status = ReservationStatus::Confirmed;
         reservations.set(reservation_id, reservation);

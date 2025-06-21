@@ -13,6 +13,7 @@ import {
   TransactionBuilder,
   BASE_FEE,
   Memo,
+  StrKey,
 } from '@stellar/stellar-sdk';
 import { requestAccess } from '@stellar/freighter-api';
 
@@ -31,7 +32,8 @@ function scValToAddress(val: any) {
   if (addr._arm === 'accountId') {
     // addr._value._arm === 'ed25519', addr._value._value.data (32 byte)
     // Burada base32 encode ile Stellar public key stringe çevrilmeli
-    return '[accountId]'; // TODO: Gerçek encode
+    const raw = addr._value._value.data || addr._value._value; // 32 byte Uint8Array veya array
+    return StrKey.encodeEd25519PublicKey(Buffer.from(raw));
   }
   return null;
 }
@@ -132,35 +134,9 @@ export default function CustomerPage() {
           return;
         }
         setWalletAddress(address);
-        
 
         const server = new rpc.Server(SOROBAN_RPC_URL);
         const account = await server.getAccount(address);
-
-
-
-        // let transactionResult;
-        // let attempts = 0;
-        // const maxAttempts = 10;
-
-        // while (attempts < maxAttempts) {
-        //   try {
-        //     transactionResult = await server.getTransaction(reservationId);
-        //     if (transactionResult.status === 'SUCCESS') {
-        //       console.log('[createNote] Transaction başarıyla onaylandı');
-        //       console.log(transactionResult);
-        //       return 1; // Başarılı
-        //     }
-        //   } catch (e) {
-        //     console.log(`[createNote] Deneme ${attempts + 1}: Transaction henüz onaylanmadı...`);
-        //   }
-        //   attempts++;
-        //   await new Promise(resolve => setTimeout(resolve, 2000)); // 2 saniye bekle
-        // }
-
-
-
-        
 
         const tx = new TransactionBuilder(account, {
           fee: BASE_FEE,
@@ -272,6 +248,7 @@ export default function CustomerPage() {
           <div className="bg-background-light rounded-xl p-6 shadow-lg mt-4">
             <PaymentSection 
               reservationId={reservation.reservationId}
+              businessId={reservation.business_id}
               onSuccess={handleConfirmationSuccess}
             />
           </div>
