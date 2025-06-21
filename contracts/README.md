@@ -64,3 +64,16 @@ https://stellar.expert/explorer/testnet/contract/CDHFV27NLOSUEIT7VF5QTQZKEQCWDVT
 2. Test hesabınızın yeterli XLM'ye sahip olduğundan emin olun.
 3. Kontrat ID'sini güvenli bir yerde saklayın.
 4. WSL üzerinde çalışırken Windows dizinlerine `/mnt/c/...` şeklinde erişebilirsiniz. 
+
+stellar cli ile örnek deploy;
+
+stellar contract invoke \
+  --id CD5R6GJX5RAVBBJWEGPLYSREGM2HDY5L23RLMIMY4GK45VLPKC26RYAA \
+  --network testnet \
+  --source-account alice \
+  -- create_reservation \
+    --business_id GC5D6JM4YP3CEZNUZ6FMDD4L26XVUO3GKLCU4SHAYNRTMRWB6FMYRKBC \
+    --reservation_time 1730000000 \
+    --party_size 2 \
+    --payment_amount 10000000 \
+    --payment_asset GC5D6JM4YP3CEZNUZ6FMDD4L26XVUO3GKLCU4SHAYNRTMRWB6FMYRKBC

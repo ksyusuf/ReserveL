@@ -1,8 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { createReservation } from '@/lib/soroban';
-import { getAddress, isConnected as freighterIsConnected } from '@stellar/freighter-api';
+import { useState } from 'react';
+import {
+  BASE_FEE,
+  Networks,
+  TransactionBuilder,
+  Memo,
+  xdr,
+  StrKey,
+  Operation,
+  nativeToScVal,
+} from '@stellar/stellar-sdk';
+import { signTransaction } from '@stellar/freighter-api';
+import { Server } from '@stellar/stellar-sdk/rpc';
 
 interface ReservationFormData {
   customerName: string;
@@ -10,12 +20,14 @@ interface ReservationFormData {
   date: string;
   time: string;
   notes: string;
-  businessId: string;
   customerId: string;
   partySize: number;
   paymentAmount: number;
   paymentAsset: string;
 }
+
+const CONTRACT_ID = process.env.NEXT_PUBLIC_CONTRACT_ID!;
+const SOROBAN_RPC_URL = 'https://soroban-testnet.stellar.org';
 
 export default function ReservationForm() {
   const [formData, setFormData] = useState<ReservationFormData>({
@@ -24,114 +36,94 @@ export default function ReservationForm() {
     date: '',
     time: '',
     notes: '',
-    businessId: '',
     customerId: '',
     partySize: 1,
     paymentAmount: 0,
-    paymentAsset: ''
+    paymentAsset: '',
   });
   const [loading, setLoading] = useState(false);
   const [reservationId, setReservationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [businessId, setBusinessId] = useState<string>('');
+
+  function getReservationTimestamp(date: string, time: string) {
+    if (!date || !time) return 0;
+    return Math.floor(new Date(`${date}T${time}:00Z`).getTime() / 1000);
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    
+    setReservationId(null);
+
     try {
-      // Freighter bağlantısı @stellar/freighter-api ile doğrudan adres alınıyor
-      let businessId = '';
-      try {
-        const { address } = await getAddress();
-        businessId = address;
-      } catch (err) {
-        console.error('[Freighter] getAddress çağrısında hata:', err);
-        throw new Error('Freighter cüzdanına bağlanılamadı veya adres alınamadı. Lütfen Freighter eklentisini açın ve bağlanın.');
-      }
-      if (!businessId) {
-        throw new Error('Freighter cüzdan adresi alınamadı.');
+      if (!businessId || !StrKey.isValidEd25519PublicKey(businessId)) {
+        throw new Error('Geçerli bir işletme cüzdan adresi giriniz!');
       }
 
-      // Varsayılan değerleri ayarla
-      const defaultCustomerId = '';
-      const defaultPaymentAsset = 'GDRWXGQZJ3F3V5WJ6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z6Z';
+      if (!formData.paymentAsset || !StrKey.isValidEd25519PublicKey(formData.paymentAsset)) {
+        throw new Error('Geçerli bir ödeme varlığı adresi (public key) giriniz!');
+      }
 
-      // Rezervasyon zamanını Unix timestamp'e çevir
-      const reservationTime = new Date(`${formData.date}T${formData.time}`).getTime();
-      
-      // First, save to database
-      const dbResponse = await fetch('/api/reservations', {
+      const reservation_time = getReservationTimestamp(formData.date, formData.time);
+      if (!reservation_time) throw new Error('Tarih ve saat geçersiz!');
+
+      const userPublicKey = businessId;
+      const server = new Server('https://soroban-testnet.stellar.org');
+      const account = await server.getAccount(userPublicKey);
+
+      const tx = new TransactionBuilder(account, {
+        fee: BASE_FEE,
+        networkPassphrase: Networks.TESTNET,
+        memo: Memo.none(),
+      })
+        .addOperation(
+          Operation.invokeContractFunction({
+            contract: CONTRACT_ID,
+            function: 'create_reservation',
+            args: [
+              nativeToScVal(businessId, { type: 'address' }),
+              nativeToScVal(reservation_time, { type: 'u64' }),
+              nativeToScVal(formData.partySize, { type: 'u32' }),
+              nativeToScVal(formData.paymentAmount, { type: 'i128' }),
+              nativeToScVal(formData.paymentAsset, { type: 'address' }),
+            ],
+          })
+        )
+        .setTimeout(60)
+        .build();
+
+      const signedXDR = await signTransaction(tx.toXDR(), { networkPassphrase: Networks.TESTNET });
+
+      const txPostRes = await fetch(`${SOROBAN_RPC_URL}/transactions`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          customerName: formData.customerName,
-          customerPhone: formData.customerPhone,
-          date: formData.date,
-          time: formData.time,
-          numberOfPeople: formData.partySize,
-          businessId: businessId,
-          customerId: defaultCustomerId,
-          notes: formData.notes || '',
-          paymentAmount: formData.paymentAmount,
-          paymentAsset: defaultPaymentAsset
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transaction: signedXDR }),
       });
 
-      if (!dbResponse.ok) {
-        const errorData = await dbResponse.json();
-        throw new Error(errorData.error || 'Veritabanına kayıt sırasında bir hata oluştu');
+      const sendRes = await txPostRes.json();
+      if (sendRes.status !== 'PENDING' && sendRes.status !== 'SUCCESS') {
+        throw new Error(`İşlem gönderilemedi: ${sendRes.errorResult || sendRes.status}`);
       }
 
-      const dbResult = await dbResponse.json();
-      console.log('Veritabanı kaydı başarılı:', dbResult);
-
-      // Then, save to smart contract
-      const contractResult = await createReservation({
-        businessId: businessId,
-        reservationTime,
-        partySize: formData.partySize,
-        paymentAmount: formData.paymentAmount * 10000000, // 7 decimal places for Stellar
-        paymentAsset: defaultPaymentAsset
-      });
-
-      console.log('Kontrat sonucu:', contractResult);
-
-      if (!contractResult.success) {
-        throw new Error(contractResult.error || 'Akıllı kontrata kayıt sırasında bir hata oluştu');
+      let txResult = null;
+      for (let i = 0; i < 10; i++) {
+        await new Promise((res) => setTimeout(res, 2000));
+        const txStatusRes = await fetch(`${SOROBAN_RPC_URL}/transaction/${sendRes.hash}`);
+        const txStatus = await txStatusRes.json();
+        if (txStatus.status === 'SUCCESS') {
+          txResult = txStatus;
+          break;
+        } else if (txStatus.status === 'FAILED') {
+          throw new Error('İşlem başarısız.');
+        }
       }
 
-      // Update the reservation in database with contract ID
-      await fetch(`/api/reservations?id=${dbResult.reservationId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contractReservationId: contractResult.reservationId,
-        }),
-      });
-
-      console.log('Rezervasyon güncellendi, kontrat ID:', contractResult.reservationId);
-      setReservationId(dbResult.reservationId);
-      setFormData({
-        customerName: '',
-        customerPhone: '',
-        date: '',
-        time: '',
-        notes: '',
-        businessId: '',
-        customerId: '',
-        partySize: 1,
-        paymentAmount: 0,
-        paymentAsset: ''
-      });
-    } catch (error) {
-      console.error('[Freighter] Rezervasyon oluşturma hatası:', error);
-      console.error('Rezervasyon oluşturma hatası:', error);
-      setError(error instanceof Error ? error.message : 'Rezervasyon oluşturulurken bir hata oluştu');
+      if (!txResult) throw new Error('İşlem zaman aşımına uğradı.');
+      setReservationId(sendRes.hash);
+    } catch (err: any) {
+      setError(err.message || 'Bilinmeyen hata!');
     } finally {
       setLoading(false);
     }
@@ -144,14 +136,11 @@ export default function ReservationForm() {
           <p>{error}</p>
         </div>
       )}
-      
+
       <div>
-        <label htmlFor="customerName" className="block text-sm font-medium text-gray-300">
-          Müşteri Adı
-        </label>
+        <label className="block text-sm font-medium text-gray-300">Müşteri Adı</label>
         <input
           type="text"
-          id="customerName"
           value={formData.customerName}
           onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
           className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
@@ -160,12 +149,9 @@ export default function ReservationForm() {
       </div>
 
       <div>
-        <label htmlFor="customerPhone" className="block text-sm font-medium text-gray-300">
-          Müşteri Telefonu
-        </label>
+        <label className="block text-sm font-medium text-gray-300">Müşteri Telefonu</label>
         <input
           type="tel"
-          id="customerPhone"
           value={formData.customerPhone}
           onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
           className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
@@ -174,12 +160,9 @@ export default function ReservationForm() {
       </div>
 
       <div>
-        <label htmlFor="date" className="block text-sm font-medium text-gray-300">
-          Tarih
-        </label>
+        <label className="block text-sm font-medium text-gray-300">Tarih</label>
         <input
           type="date"
-          id="date"
           value={formData.date}
           onChange={(e) => setFormData({ ...formData, date: e.target.value })}
           className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
@@ -188,12 +171,9 @@ export default function ReservationForm() {
       </div>
 
       <div>
-        <label htmlFor="time" className="block text-sm font-medium text-gray-300">
-          Saat
-        </label>
+        <label className="block text-sm font-medium text-gray-300">Saat</label>
         <input
           type="time"
-          id="time"
           value={formData.time}
           onChange={(e) => setFormData({ ...formData, time: e.target.value })}
           className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
@@ -202,30 +182,14 @@ export default function ReservationForm() {
       </div>
 
       <div>
-        <label htmlFor="partySize" className="block text-sm font-medium text-gray-300">
-          Kişi Sayısı
-        </label>
+        <label className="block text-sm font-medium text-gray-300">Kişi Sayısı</label>
         <input
           type="number"
-          id="partySize"
           min={1}
           value={formData.partySize}
           onChange={(e) => setFormData({ ...formData, partySize: Number(e.target.value) })}
           className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
           required
-        />
-      </div>
-
-      <div>
-        <label htmlFor="notes" className="block text-sm font-medium text-gray-300">
-          Notlar
-        </label>
-        <textarea
-          id="notes"
-          value={formData.notes}
-          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
-          rows={3}
         />
       </div>
 
@@ -246,4 +210,4 @@ export default function ReservationForm() {
       )}
     </form>
   );
-} 
+}

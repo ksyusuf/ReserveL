@@ -1,15 +1,10 @@
 [package]
 name = "reservel-contract"
-version = "0.0.1"
+version = "0.1.0"
 edition = "2021"
-description = "ReserveL: Reservation and Basic Loyalty System on Stellar Soroban"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-soroban-sdk = "22.0.8"
-soroban-sdk-macros = "22.0.8"
-
-[dev_dependencies]
-soroban-sdk = { version = "22.0.8", features = ["testutils"] }
+soroban-sdk = "=22.0.4"  # Rust 1.81 uyumlu SDK sürümü

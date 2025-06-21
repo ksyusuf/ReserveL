@@ -22,7 +22,7 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
       </head>
-      <body className={`${inter.className} antialiased overflow-hidden`}>
+      <body className={`${inter.className} antialiased`}>
         <div className="relative flex min-h-screen flex-col">
           <div className="flex-1">
             <div className="relative isolate">
