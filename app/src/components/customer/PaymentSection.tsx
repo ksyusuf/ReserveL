@@ -21,12 +21,51 @@ const SOROBAN_RPC_URL = 'https://soroban-testnet.stellar.org';
 interface PaymentSectionProps {
   reservationId: string;
   businessId: string;
+  reservationStatus: {
+    confirmationStatus: 'pending' | 'confirmed' | 'cancelled';
+    attendanceStatus: 'not_arrived' | 'arrived' | 'no_show';
+    status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  };
   onSuccess: () => void;    
 }
 
-export default function PaymentSection({ reservationId, businessId, onSuccess }: PaymentSectionProps) {
+export default function PaymentSection({ 
+  reservationId, 
+  businessId, 
+  reservationStatus, 
+  onSuccess 
+}: PaymentSectionProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Rezervasyon zaten onaylanmışsa işlemi engelle
+  if (reservationStatus.confirmationStatus === 'confirmed') {
+    return (
+      <div className="space-y-4">
+        <div className="bg-green-50 p-4 rounded-lg">
+          <h2 className="text-lg font-semibold text-green-900 mb-2">Rezervasyon Zaten Onaylandı</h2>
+          <p className="text-green-700">
+            Bu rezervasyon zaten onaylanmış ve ödeme tamamlanmıştır. 
+            Herhangi bir işlem yapmanıza gerek yoktur.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Rezervasyon iptal edilmişse bilgilendir
+  if (reservationStatus.confirmationStatus === 'cancelled') {
+    return (
+      <div className="space-y-4">
+        <div className="bg-red-50 p-4 rounded-lg">
+          <h2 className="text-lg font-semibold text-red-900 mb-2">Rezervasyon İptal Edildi</h2>
+          <p className="text-red-700">
+            Bu rezervasyon iptal edilmiştir. Onaylama işlemi yapılamaz.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const handleConfirm = async () => {
     setLoading(true);
@@ -46,22 +85,37 @@ export default function PaymentSection({ reservationId, businessId, onSuccess }:
 
       // 3. Transaction oluştur
       console.log('DEBUG: nativeToScVal input:', reservationId);
-      const tx = new TransactionBuilder(account, {
+
+      // 1. ÖDEME TRANSAKSIYONU
+      const paymentTx = new TransactionBuilder(account, {
         fee: BASE_FEE,
         networkPassphrase: Networks.TESTNET,
         memo: Memo.none(),
-        })
-          // XLM transferi (native asset)
-          .addOperation(
-            Operation.payment({
-              destination: businessId, // rezervasyon yapan işletme hesabı
-              asset: Asset.native(),
-              amount: "1.0000000", // 1 XLM (stroop değil!)
-            })
-            // aynı transaction içerisinde rezervasyon için ödeme yapıyoruz,
-            // zincir tarafında da takasın gerçekleşmiş gibi kayıt ediyoruz.
-          )
-          // Kontrat çağrısı
+      })
+        .addOperation(
+          Operation.payment({
+            destination: businessId,
+            asset: Asset.native(),
+            amount: "1000", // 1 USD eşdeğeri gibi.
+          })
+        )
+        .setTimeout(60)
+        .build();
+
+      const { signedTxXdr: signedPaymentXdr } = await signTransaction(paymentTx.toXDR(), {
+        networkPassphrase: Networks.TESTNET,
+      });
+      const signedPaymentTx = TransactionBuilder.fromXDR(signedPaymentXdr, Networks.TESTNET);
+
+      const paymentResult = await server.sendTransaction(signedPaymentTx);
+      console.log('DEBUG: paymentResult:', paymentResult);
+
+      // 2. KONTRAT ÇAĞRISI TRANSAKSIYONU
+      const contractTx = new TransactionBuilder(account, {
+        fee: BASE_FEE,
+        networkPassphrase: Networks.TESTNET,
+        memo: Memo.none(),
+      })
         .addOperation(
           Operation.invokeContractFunction({
             contract: CONTRACT_ID,
@@ -74,28 +128,53 @@ export default function PaymentSection({ reservationId, businessId, onSuccess }:
         )
         .setTimeout(60)
         .build();
-      console.log('DEBUG: tx built:', tx);
 
-      // 4. Simülasyon
-      const simResult = await server.simulateTransaction(tx);
+      console.log('DEBUG: contractTx built:', contractTx);
+
+      // Simülasyon
+      const simResult = await server.simulateTransaction(contractTx);
       console.log('DEBUG: simResult:', simResult);
-      const assembledTx = rpc.assembleTransaction(tx, simResult);
+
+      const assembledTx = rpc.assembleTransaction(contractTx, simResult);
       const xdr = assembledTx.build().toXDR();
       console.log('DEBUG: xdr:', xdr);
 
-      // 5. İmzalama
+      // İmzalama
       const { signedTxXdr } = await signTransaction(xdr, {
         networkPassphrase: Networks.TESTNET,
       });
       const signedTx = TransactionBuilder.fromXDR(signedTxXdr, Networks.TESTNET);
       console.log('DEBUG: signedTx:', signedTx);
 
-      // 6. Transaction gönder
+      // Transaction gönder
       const sendResult = await server.sendTransaction(signedTx);
       console.log('DEBUG: sendResult:', sendResult);
 
+      const dbUpdateResponse = await fetch('/api/reservations/confirm-reservation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reservationId: reservationId,
+          customerAddress: address,
+          transactionHash: sendResult.hash
+        }),
+      });
+
+      console.log('DEBUG: API yanıt durumu:', dbUpdateResponse.status);
+      console.log('DEBUG: API yanıt headers:', Object.fromEntries(dbUpdateResponse.headers.entries()));
+
+      if (!dbUpdateResponse.ok) {
+        const errorData = await dbUpdateResponse.json();
+        console.error('DEBUG: API hata detayı:', errorData);
+        throw new Error(`Veritabanı güncelleme hatası: ${errorData.error}`);
+      }
+
+      const dbUpdateResult = await dbUpdateResponse.json();
+      console.log('DEBUG: Veritabanı güncelleme sonucu:', dbUpdateResult);
+
       onSuccess();
-      alert('Rezervasyon başarıyla onaylandı! İşlem hash: ' + sendResult.hash);
     } catch (err: any) {
       console.error('DEBUG: Hata oluştu:', err);
       setError(err.message || 'Onaylama sırasında bir hata oluştu!');
@@ -110,7 +189,7 @@ export default function PaymentSection({ reservationId, businessId, onSuccess }:
         <h2 className="text-lg font-semibold text-gray-900 mb-2">Rezervasyon Onayı</h2>
         <p className="text-gray-600">
           Rezervasyonunuzu onaylamak için cüzdanınızla giriş yapın ve onaylayın.
-          Bu işlem otomatik olarak ödeme transferini de gerçekleştirecektir.
+          Bu işlem rezervasyonunuzu onaylayacaktır.
         </p>
       </div>
 

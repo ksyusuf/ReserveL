@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-// import { connectDB, Reservation } from '@/lib/db';
+import { connectDB, Reservation } from '@/lib/db';
+
+// Bu route, bildirim sistemi için kullanılır:
+// GET: Onay bekleyen (pending) rezervasyonları bildirim olarak listeler
+// POST: Yeni bildirim oluşturur ve gönderir (şu anda sadece log kaydı tutar)
+// Bildirim sistemi için temel altyapıyı sağlar
 
 interface Notification {
   id: string;
@@ -13,10 +18,9 @@ interface Notification {
 export async function GET(request: Request) {
   try {
     console.log('Bildirimler getiriliyor...');
-    // await connectDB();
+    await connectDB();
     
-    // const notifications = await Reservation.find({ confirmationStatus: 'pending' });
-    const notifications = []; // MongoDB devre dışı
+    const notifications = await Reservation.find({ confirmationStatus: 'pending' });
     
     return NextResponse.json(notifications);
   } catch (error) {
@@ -32,7 +36,7 @@ export async function POST(request: Request) {
   try {
     console.log('=== Bildirim Gönderme Başladı ===');
     console.log('Veritabanına bağlanılıyor...');
-    // await connectDB();
+    await connectDB();
     console.log('Veritabanı bağlantısı başarılı');
     
     const body = await request.json();

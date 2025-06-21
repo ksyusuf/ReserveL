@@ -29,10 +29,14 @@ interface ReservationFormData {
   partySize: number;
 }
 
+interface ReservationFormProps {
+  onReservationCreated?: () => void;
+}
+
 const CONTRACT_ID = process.env.NEXT_PUBLIC_CONTRACT_ID!;
 const SOROBAN_RPC_URL = 'https://soroban-testnet.stellar.org';
 
-export default function ReservationForm() {
+export default function ReservationForm({ onReservationCreated }: ReservationFormProps) {
   const [formData, setFormData] = useState<ReservationFormData>({
     customerName: '',
     customerPhone: '',
@@ -60,13 +64,43 @@ export default function ReservationForm() {
     console.log('submit tetiklendi'); // en başa koy
 
     try {
+      // Form verilerini doğrula ve temizle
+      const validatedData = {
+        customerName: formData.customerName?.trim() || 'Müşteri Adı',
+        customerPhone: formData.customerPhone?.trim() || 'Telefon',
+        date: formData.date?.trim() || '',
+        time: formData.time?.trim() || '',
+        notes: formData.notes?.trim() || '',
+        customerId: formData.customerId?.trim() || 'anonymous',
+        partySize: Math.max(1, parseInt(formData.partySize.toString()) || 1),
+      };
+
+      // Tarih ve saat doğrulama
+      if (!validatedData.date) {
+        throw new Error('Tarih seçilmelidir');
+      }
+
+      if (!validatedData.time) {
+        throw new Error('Saat seçilmelidir');
+      }
+
+      const dateObj = new Date(validatedData.date);
+      if (isNaN(dateObj.getTime())) {
+        throw new Error('Geçersiz tarih formatı');
+      }
+
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(validatedData.time)) {
+        throw new Error('Geçersiz saat formatı (HH:MM olmalı)');
+      }
+
       const { address } = await requestAccess();
       console.log(address);
       if (!address || !StrKey.isValidEd25519PublicKey(address)) {
         throw new Error('Freighter cüzdan adresi alınamadı veya geçersiz.');
       }
 
-      const reservation_time = getReservationTimestamp(formData.date, formData.time);
+      const reservation_time = getReservationTimestamp(validatedData.date, validatedData.time);
       if (!reservation_time) throw new Error('Tarih ve saat geçersiz!');
 
       const server = new rpc.Server(SOROBAN_RPC_URL);
@@ -84,7 +118,7 @@ export default function ReservationForm() {
             args: [
               new Address(address).toScVal(),               // business_id
               nativeToScVal(reservation_time, { type: 'u64' }),
-              nativeToScVal(formData.partySize, { type: 'u32' }),
+              nativeToScVal(validatedData.partySize, { type: 'u32' }),
               nativeToScVal("10000000", { type: 'i128' }),  // 1 USD
               nativeToScVal(undefined, { type: 'asset' }) // native asset anlamında
             ],
@@ -129,15 +163,71 @@ export default function ReservationForm() {
 
         setReservationId(id.toString());
 
-        
+        // Zincir işlemi başarılı olduktan sonra veritabanına kaydet
+        if (finalResult && finalResult.status === 'SUCCESS') {
+          console.log('Zincir işlemi başarılı, veritabanına kaydediliyor...');
+          
+          const reservationData = {
+            customerName: validatedData.customerName,
+            customerPhone: validatedData.customerPhone,
+            date: validatedData.date,
+            time: validatedData.time,
+            numberOfPeople: validatedData.partySize,
+            businessId: address,
+            customerId: validatedData.customerId,
+            notes: validatedData.notes,
+            blockchainReservationId: id.toString(),
+            status: 'pending',
+            attendanceStatus: 'not_arrived',
+            confirmationStatus: 'pending'
+          };
 
+          console.log('Frontend\'den gönderilen reservationData:', JSON.stringify(reservationData, null, 2));
 
+          try {
+            const response = await fetch('/api/reservations', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(reservationData),
+            });
 
-      
+            if (!response.ok) {
+              const errorData = await response.json();
+              console.error('Veritabanı kayıt hatası:', errorData);
+              throw new Error(`Veritabanına kayıt yapılamadı: ${errorData.error || 'Bilinmeyen hata'}`);
+            }
 
-if (!finalResult || finalResult.status !== 'SUCCESS') {
-    console.error('İşlem zaman aşımına uğradı veya başarıyla tamamlanamadı.');
-}
+            const savedReservation = await response.json();
+            console.log('Rezervasyon veritabanına başarıyla kaydedildi:', savedReservation);
+            
+            // Başarılı olduğunda callback'i çağır ve formu temizle
+            if (onReservationCreated) {
+              onReservationCreated();
+            }
+            
+            // Formu temizle
+            setFormData({
+              customerName: '',
+              customerPhone: '',
+              date: '',
+              time: '',
+              notes: '',
+              customerId: '',
+              partySize: 1,
+            });
+          } catch (dbError: any) {
+            console.error('Veritabanı kayıt hatası:', dbError);
+            // Zincir işlemi başarılı ama veritabanı hatası - kullanıcıya bilgi ver
+            setError(`Rezervasyon zincire kaydedildi ancak veritabanına kayıt yapılamadı: ${dbError.message}`);
+          }
+        }
+
+        if (!finalResult || finalResult.status !== 'SUCCESS') {
+          console.error('İşlem zaman aşımına uğradı veya başarıyla tamamlanamadı.');
+          throw new Error('Zincir işlemi başarısız oldu');
+        }
 
     } catch (err: any) {
       setError(err.message || 'Bilinmeyen hata!');
@@ -219,13 +309,13 @@ if (!finalResult || finalResult.status !== 'SUCCESS') {
       </button>
 
       {reservationId && (
-        <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
+        <div className="mt-4 p-3 bg-green-900/20 rounded border border-green-500/30 backdrop-blur-sm">
           <div className="flex items-center">
             <input
               type="text"
               readOnly
               value={`${typeof window !== 'undefined' ? window.location.origin : ''}/customer-page?reservationId=${reservationId}`}
-              className="w-full text-xs bg-gray-100 px-2 py-1 rounded"
+              className="w-full text-xs bg-gray-700 text-white px-2 py-1 rounded border border-gray-600"
               onFocus={e => e.target.select()}
             />
             <button
@@ -235,12 +325,15 @@ if (!finalResult || finalResult.status !== 'SUCCESS') {
                   navigator.clipboard.writeText(`${window.location.origin}/customer-page?reservationId=${reservationId}`);
                 }
               }}
-              className="ml-2 px-2 py-1 bg-blue-500 text-white rounded text-xs"
+              className="ml-2 p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              title="Kopyala"
             >
-              Kopyala
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
             </button>
           </div>
-          <div className="text-xs text-gray-500 mt-1">Bu linki müşteriyle paylaşarak rezervasyonun onaylanmasını sağlayabilirsiniz.</div>
+          <div className="text-xs text-gray-400 mt-1">Bu linki müşteriyle paylaşarak rezervasyonun onaylanmasını sağlayabilirsiniz.</div>
         </div>
       )}
     </form>

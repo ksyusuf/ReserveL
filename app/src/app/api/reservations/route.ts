@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server';
 import { connectDB, Reservation } from '@/lib/db';
-import { generateReservationId, generateConfirmationToken } from '@/lib/utils';
+import { generateReservationId, generateConfirmationToken, getRandomBusinessName } from '@/lib/utils';
+
+// Bu route, rezervasyon sisteminin ana CRUD işlemlerini yönetir:
+// POST: Yeni rezervasyon oluşturur (müşteri adı, telefon, tarih, saat, kişi sayısı, işletme ID gibi bilgilerle)
+// GET: Tüm rezervasyonları listeler veya ID ile tek rezervasyon getirir
+// PUT: Mevcut rezervasyonu günceller (sadece pending durumundaki rezervasyonları iptal edebilir)
+// DELETE: Rezervasyonu kalıcı olarak siler
 
 export async function POST(request: Request) {
   try {
     console.log('=== Rezervasyon Oluşturma Başladı ===');
     console.log('Veritabanına bağlanılıyor...');
-    // await connectDB();
+    await connectDB();
     console.log('Veritabanı bağlantısı başarılı');
     
     const body = await request.json();
@@ -24,20 +30,67 @@ export async function POST(request: Request) {
       );
     }
 
+    // Veri doğrulama ve temizleme
+    const reservationData = {
+      customerName: body.customerName?.trim() || 'Müşteri Adı',
+      customerPhone: body.customerPhone?.trim() || 'Telefon',
+      date: body.date?.trim() || '',
+      time: body.time?.trim() || '',
+      numberOfPeople: parseInt(body.numberOfPeople) || 1,
+      businessId: body.businessId?.trim() || '',
+      customerId: body.customerId?.trim() || 'anonymous',
+      notes: body.notes?.trim() || '',
+      blockchainReservationId: body.blockchainReservationId || null,
+      status: body.status || 'pending',
+      attendanceStatus: body.attendanceStatus || 'not_arrived',
+      confirmationStatus: body.confirmationStatus || 'pending',
+      loyaltyTokensSent: body.loyaltyTokensSent || false,
+      customerAddress: body.customerAddress || null,
+      transactionHash: body.transactionHash || null,
+    };
+
+    console.log('Gelen body verisi:', JSON.stringify(body, null, 2));
+    console.log('İşlenmiş reservationData:', JSON.stringify(reservationData, null, 2));
+
+    // Tarih ve saat doğrulama
+    if (reservationData.date) {
+      const dateObj = new Date(reservationData.date);
+      if (isNaN(dateObj.getTime())) {
+        return NextResponse.json(
+          { error: 'Geçersiz tarih formatı' },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (reservationData.time) {
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(reservationData.time)) {
+        return NextResponse.json(
+          { error: 'Geçersiz saat formatı (HH:MM olmalı)' },
+          { status: 400 }
+        );
+      }
+    }
+
     const confirmationToken = generateConfirmationToken();
     const confirmationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/confirm/${confirmationToken}`;
     
+    // Rastgele işletme adı seç
+    const randomBusinessName = getRandomBusinessName();
+    
     const reservation = new Reservation({
-      ...body,
+      ...reservationData,
       reservationId: generateReservationId(),
       confirmationToken,
-      businessName: process.env.NEXT_PUBLIC_BUSINESS_NAME || 'İşletme Adı',
+      businessName: randomBusinessName,
     });
     
     console.log('Oluşturulan rezervasyon objesi:', JSON.stringify(reservation, null, 2));
+    console.log('Seçilen işletme adı:', randomBusinessName);
     console.log('Rezervasyon kaydediliyor...');
     
-    // await reservation.save();
+    await reservation.save();
     
     console.log('Rezervasyon başarıyla kaydedildi');
     console.log('=== Rezervasyon Oluşturma Tamamlandı ===');
@@ -65,15 +118,14 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     console.log('Connecting to database for GET request...'); // Debug için
-    // await connectDB();
+    await connectDB();
     
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     
     if (id) {
       console.log('Fetching reservation with ID:', id); // Debug için
-      // const reservation = await Reservation.findOne({ reservationId: id });
-      const reservation = null; // MongoDB devre dışı
+      const reservation = await Reservation.findOne({ reservationId: id });
       if (!reservation) {
         return NextResponse.json(
           { error: 'Rezervasyon bulunamadı' },
@@ -84,11 +136,29 @@ export async function GET(request: Request) {
     }
     
     console.log('Fetching all reservations...'); // Debug için
-    // const reservations = await Reservation.find().sort({ createdAt: -1 });
-    const reservations = []; // MongoDB devre dışı
+    const reservations = await Reservation.find().sort({ createdAt: -1 });
     console.log('Found reservations:', reservations.length); // Debug için
     
-    return NextResponse.json(reservations);
+    // attendanceStatus alanını da dahil et
+    const formattedReservations = reservations.map(reservation => ({
+      reservationId: reservation.reservationId,
+      customerName: reservation.customerName,
+      customerPhone: reservation.customerPhone,
+      date: reservation.date,
+      time: reservation.time,
+      numberOfPeople: reservation.numberOfPeople,
+      attendanceStatus: reservation.attendanceStatus || 'not_arrived',
+      confirmationStatus: reservation.confirmationStatus,
+      loyaltyTokensSent: reservation.loyaltyTokensSent,
+      businessId: reservation.businessId,
+      customerId: reservation.customerId,
+      notes: reservation.notes,
+      status: reservation.status,
+      createdAt: reservation.createdAt,
+      updatedAt: reservation.updatedAt
+    }));
+    
+    return NextResponse.json(formattedReservations);
   } catch (error) {
     console.error('Reservation retrieval error:', error);
     return NextResponse.json(
@@ -100,7 +170,7 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    // await connectDB();
+    await connectDB();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     
@@ -112,12 +182,46 @@ export async function PUT(request: Request) {
     }
     
     const body = await request.json();
-    // const reservation = await Reservation.findOneAndUpdate(
-    //   { reservationId: id },
-    //   { $set: body },
-    //   { new: true }
-    // );
-    const reservation = null; // MongoDB devre dışı
+    const updateData: any = {};
+    
+    // Mevcut rezervasyonu al
+    const existingReservation = await Reservation.findOne({ reservationId: id });
+    if (!existingReservation) {
+      return NextResponse.json(
+        { error: 'Reservation not found' },
+        { status: 404 }
+      );
+    }
+    
+    // İptal işlemi - sadece pending durumundaki rezervasyonlar için
+    if (body.confirmationStatus === 'cancelled') {
+      // Sadece pending durumundaki rezervasyonları iptal et
+      if (existingReservation.confirmationStatus === 'pending') {
+        updateData.confirmationStatus = 'cancelled';
+        updateData.status = 'cancelled';
+      } else {
+        return NextResponse.json(
+          { error: 'Sadece onay bekleyen rezervasyonlar iptal edilebilir' },
+          { status: 400 }
+        );
+      }
+    }
+    
+    // Diğer alanları ekle
+    Object.keys(body).forEach(key => {
+      if (key !== 'confirmationStatus') {
+        updateData[key] = body[key];
+      }
+    });
+    
+    // updatedAt alanını güncelle
+    updateData.updatedAt = new Date();
+    
+    const reservation = await Reservation.findOneAndUpdate(
+      { reservationId: id },
+      { $set: updateData },
+      { new: true }
+    );
     
     if (!reservation) {
       return NextResponse.json(
@@ -138,7 +242,7 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    // await connectDB();
+    await connectDB();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     
@@ -149,8 +253,7 @@ export async function DELETE(request: Request) {
       );
     }
     
-    // const reservation = await Reservation.findOneAndDelete({ reservationId: id });
-    const reservation = null; // MongoDB devre dışı
+    const reservation = await Reservation.findOneAndDelete({ reservationId: id });
     
     if (!reservation) {
       return NextResponse.json(

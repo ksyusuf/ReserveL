@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { getRandomBusinessName } from './utils';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -72,35 +73,78 @@ const ReservationSchema = new mongoose.Schema({
     unique: true,
     sparse: true,
   },
+  blockchainReservationId: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
+  businessId: {
+    type: String,
+    required: true,
+  },
   businessName: {
     type: String,
     required: true,
+    default: getRandomBusinessName,
+  },
+  customerId: {
+    type: String,
+    required: true,
+    default: 'anonymous',
   },
   customerName: {
     type: String,
     required: true,
+    default: 'Müşteri Adı',
   },
   date: {
-    type: Date,
+    type: String,
     required: true,
+    validate: {
+      validator: function(v: string) {
+        if (!v) return false;
+        const dateObj = new Date(v);
+        return !isNaN(dateObj.getTime());
+      },
+      message: 'Geçersiz tarih formatı'
+    }
   },
   time: {
     type: String,
     required: true,
+    validate: {
+      validator: function(v: string) {
+        if (!v) return false;
+        const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        return timeRegex.test(v);
+      },
+      message: 'Geçersiz saat formatı (HH:MM olmalı)'
+    }
   },
   numberOfPeople: {
     type: Number,
     required: true,
     min: 1,
+    default: 1,
   },
   customerPhone: {
     type: String,
     required: true,
+    default: 'Telefon',
   },
-  paymentStatus: {
+  notes: {
     type: String,
-    enum: ['pending', 'completed', 'failed'],
+    default: '',
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'confirmed', 'cancelled', 'completed'],
     default: 'pending',
+  },
+  attendanceStatus: {
+    type: String,
+    enum: ['not_arrived', 'arrived', 'no_show'],
+    default: 'not_arrived',
   },
   confirmationStatus: {
     type: String,
@@ -115,6 +159,14 @@ const ReservationSchema = new mongoose.Schema({
   loyaltyTokensSent: {
     type: Boolean,
     default: false,
+  },
+  customerAddress: {
+    type: String,
+    default: null,
+  },
+  transactionHash: {
+    type: String,
+    default: null,
   },
   createdAt: {
     type: Date,
