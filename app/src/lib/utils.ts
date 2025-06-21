@@ -17,15 +17,23 @@ export const generateConfirmationToken = (): string => {
   return `CONF-${timestamp}-${randomStr}`.toUpperCase();
 };
 
-export const formatDate = (date: Date): string => {
-  return date.toLocaleDateString('tr-TR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+export const formatDate = (date: Date | string | undefined | null): string => {
+  if (!date) return 'Belirtilmemiş';
+  try {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(dateObj.getTime())) return 'Geçersiz tarih';
+    return dateObj.toLocaleDateString('tr-TR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  } catch (error) {
+    return 'Geçersiz tarih';
+  }
 };
 
-export const formatTime = (time: string): string => {
+export const formatTime = (time: string | undefined | null): string => {
+  if (!time) return 'Belirtilmemiş';
   const [hours, minutes] = time.split(':');
   return `${hours}:${minutes}`;
 };

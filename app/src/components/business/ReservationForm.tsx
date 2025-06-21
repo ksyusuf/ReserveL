@@ -7,16 +7,17 @@ import {
   Networks,
   Address,
   nativeToScVal,
+  scValToNative,
   StrKey,
   Operation,
   Memo,
   rpc,
+  xdr, // xdr modülünü import ettiğinizden emin olun!
 } from '@stellar/stellar-sdk';
 
 import { signTransaction, getAddress } from '@stellar/freighter-api';
 import { requestAccess } from '@stellar/freighter-api';
 import { Transaction } from '@stellar/stellar-sdk';
-
 
 interface ReservationFormData {
   customerName: string;
@@ -85,21 +86,29 @@ export default function ReservationForm() {
               nativeToScVal(reservation_time, { type: 'u64' }),
               nativeToScVal(formData.partySize, { type: 'u32' }),
               nativeToScVal("10000000", { type: 'i128' }),  // 1 USD
-              new Address(address).toScVal(),               // payment_asset = aynı adres
+              new Address("CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA").toScVal(), // USDC için contrac_id
             ],
           })
         )
         .setTimeout(60)
         .build();
 
-        const simResult = await server.simulateTransaction(tx);
+        const simResult = await server.simulateTransaction(tx); // geçici olarak any
         console.log('Simülasyon sonucu:', simResult);
+
+        // TypeScript'e burada returnValue olduğunu bildiriyoruz:
+        const returnValue = (simResult as any).returnValue;
+
+        if (returnValue && returnValue._arm === 'u64') {
+          const reservationId = Number(returnValue._value._value ?? returnValue._value);
+          console.log('Yeni rezervasyon ID:', reservationId);
+        }
 
         const assembledTx = rpc.assembleTransaction(tx, simResult);
 
         const xdr = assembledTx.build().toXDR();
 
-        // 🔐 İmzalama — BURAYA EKLE
+        // 🔐 İmzalama
         const { signedTxXdr } = await signTransaction(xdr, {
           networkPassphrase: Networks.TESTNET,
         });
@@ -109,46 +118,26 @@ export default function ReservationForm() {
         const sendResult = await server.sendTransaction(signedTx);
 
         console.log('İşlem başarılı:', sendResult);
-        setReservationId(sendResult.hash);
+
+        
+
+        const finalResult = await server.pollTransaction(sendResult.hash);
+
+        console.log("xxx:", scValToNative((finalResult as any).returnValue));
+
+        const id = scValToNative((finalResult as any).returnValue);
+
+        setReservationId(id.toString());
+
         
 
 
-      //   // 🔧 Simülasyon auth'ları üretir:
-      //   const sim = await server.simulateTransaction(tx);
-      //   tx.setSorobanData(sim); // 🔐 Auth'lar buraya eklenir
 
-      //   // 🖊️ İmzalama
-      //   const { signedTxXdr } = await signTransaction(tx.toXDR(), {
-      //     networkPassphrase: Networks.TESTNET,
-      //   });
-      //   const signedTx = TransactionBuilder.fromXDR(signedTxXdr, Networks.TESTNET);
+      
 
-      //   // 🚀 Gönderim
-      //   const result = await server.sendTransaction(signedTx);
-
-      //   console.log("XDR:", tx.toXDR());
-
-      //   // Freighter ile imzalama
-      //   const { signedTxXdr }  = await signTransaction(tx.toXDR(), {
-      //     networkPassphrase: Networks.TESTNET,
-      //   });
-      //   if (!signedTxXdr) {
-      //     throw new Error("İmzalanmış işlem alınamadı.");
-      //   }
-
-      //   // XDR'den Transaction nesnesine çevir
-      // const signedTx = TransactionBuilder.fromXDR(signedTxXdr, Networks.TESTNET);
-
-      // // İşlemi submit et
-      // const result = await server.sendTransaction(signedTx);
-
-      // if (!result.hash) {
-      //   throw new Error('İşlem ağına gönderilemedi.');
-      // }
-
-      // console.log('İşlem başarılı:', result);
-      // setReservationId(result.hash);
-
+if (!finalResult || finalResult.status !== 'SUCCESS') {
+    console.error('İşlem zaman aşımına uğradı veya başarıyla tamamlanamadı.');
+}
 
     } catch (err: any) {
       setError(err.message || 'Bilinmeyen hata!');
@@ -230,10 +219,28 @@ export default function ReservationForm() {
       </button>
 
       {reservationId && (
-        <div className="mt-4 p-4 bg-green-900 rounded-md">
-          <p className="text-white font-medium">Rezervasyon başarıyla oluşturuldu!</p>
-          <p className="text-white mt-2">İşlem Hash:</p>
-          <p className="text-white break-all mt-1">{reservationId}</p>
+        <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
+          <div className="flex items-center">
+            <input
+              type="text"
+              readOnly
+              value={`${typeof window !== 'undefined' ? window.location.origin : ''}/customer-page?reservationId=${reservationId}`}
+              className="w-full text-xs bg-gray-100 px-2 py-1 rounded"
+              onFocus={e => e.target.select()}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  navigator.clipboard.writeText(`${window.location.origin}/customer-page?reservationId=${reservationId}`);
+                }
+              }}
+              className="ml-2 px-2 py-1 bg-blue-500 text-white rounded text-xs"
+            >
+              Kopyala
+            </button>
+          </div>
+          <div className="text-xs text-gray-500 mt-1">Bu linki müşteriyle paylaşarak rezervasyonun onaylanmasını sağlayabilirsiniz.</div>
         </div>
       )}
     </form>
