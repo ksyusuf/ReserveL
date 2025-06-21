@@ -6,7 +6,7 @@ export async function POST(request: Request) {
   try {
     console.log('=== Rezervasyon Oluşturma Başladı ===');
     console.log('Veritabanına bağlanılıyor...');
-    await connectDB();
+    // await connectDB();
     console.log('Veritabanı bağlantısı başarılı');
     
     const body = await request.json();
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     console.log('Oluşturulan rezervasyon objesi:', JSON.stringify(reservation, null, 2));
     console.log('Rezervasyon kaydediliyor...');
     
-    await reservation.save();
+    // await reservation.save();
     
     console.log('Rezervasyon başarıyla kaydedildi');
     console.log('=== Rezervasyon Oluşturma Tamamlandı ===');
@@ -65,14 +65,15 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     console.log('Connecting to database for GET request...'); // Debug için
-    await connectDB();
+    // await connectDB();
     
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     
     if (id) {
       console.log('Fetching reservation with ID:', id); // Debug için
-      const reservation = await Reservation.findOne({ reservationId: id });
+      // const reservation = await Reservation.findOne({ reservationId: id });
+      const reservation = null; // MongoDB devre dışı
       if (!reservation) {
         return NextResponse.json(
           { error: 'Rezervasyon bulunamadı' },
@@ -83,7 +84,8 @@ export async function GET(request: Request) {
     }
     
     console.log('Fetching all reservations...'); // Debug için
-    const reservations = await Reservation.find().sort({ createdAt: -1 });
+    // const reservations = await Reservation.find().sort({ createdAt: -1 });
+    const reservations = []; // MongoDB devre dışı
     console.log('Found reservations:', reservations.length); // Debug için
     
     return NextResponse.json(reservations);
@@ -98,7 +100,7 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    await connectDB();
+    // await connectDB();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     
@@ -110,11 +112,12 @@ export async function PUT(request: Request) {
     }
     
     const body = await request.json();
-    const reservation = await Reservation.findOneAndUpdate(
-      { reservationId: id },
-      { $set: body },
-      { new: true }
-    );
+    // const reservation = await Reservation.findOneAndUpdate(
+    //   { reservationId: id },
+    //   { $set: body },
+    //   { new: true }
+    // );
+    const reservation = null; // MongoDB devre dışı
     
     if (!reservation) {
       return NextResponse.json(
@@ -135,7 +138,7 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    await connectDB();
+    // await connectDB();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     
@@ -146,7 +149,8 @@ export async function DELETE(request: Request) {
       );
     }
     
-    const reservation = await Reservation.findOneAndDelete({ reservationId: id });
+    // const reservation = await Reservation.findOneAndDelete({ reservationId: id });
+    const reservation = null; // MongoDB devre dışı
     
     if (!reservation) {
       return NextResponse.json(

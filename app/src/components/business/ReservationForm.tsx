@@ -2,17 +2,21 @@
 
 import { useState } from 'react';
 import {
+  TransactionBuilder,
   BASE_FEE,
   Networks,
-  TransactionBuilder,
-  Memo,
-  xdr,
+  Address,
+  nativeToScVal,
   StrKey,
   Operation,
-  nativeToScVal,
+  Memo,
+  rpc,
 } from '@stellar/stellar-sdk';
-import { signTransaction } from '@stellar/freighter-api';
-import { Server } from '@stellar/stellar-sdk/rpc';
+
+import { signTransaction, getAddress } from '@stellar/freighter-api';
+import { requestAccess } from '@stellar/freighter-api';
+import { Transaction } from '@stellar/stellar-sdk';
+
 
 interface ReservationFormData {
   customerName: string;
@@ -22,8 +26,6 @@ interface ReservationFormData {
   notes: string;
   customerId: string;
   partySize: number;
-  paymentAmount: number;
-  paymentAsset: string;
 }
 
 const CONTRACT_ID = process.env.NEXT_PUBLIC_CONTRACT_ID!;
@@ -38,13 +40,10 @@ export default function ReservationForm() {
     notes: '',
     customerId: '',
     partySize: 1,
-    paymentAmount: 0,
-    paymentAsset: '',
   });
   const [loading, setLoading] = useState(false);
   const [reservationId, setReservationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [businessId, setBusinessId] = useState<string>('');
 
   function getReservationTimestamp(date: string, time: string) {
     if (!date || !time) return 0;
@@ -57,21 +56,20 @@ export default function ReservationForm() {
     setError(null);
     setReservationId(null);
 
-    try {
-      if (!businessId || !StrKey.isValidEd25519PublicKey(businessId)) {
-        throw new Error('Geçerli bir işletme cüzdan adresi giriniz!');
-      }
+    console.log('submit tetiklendi'); // en başa koy
 
-      if (!formData.paymentAsset || !StrKey.isValidEd25519PublicKey(formData.paymentAsset)) {
-        throw new Error('Geçerli bir ödeme varlığı adresi (public key) giriniz!');
+    try {
+      const { address } = await requestAccess();
+      console.log(address);
+      if (!address || !StrKey.isValidEd25519PublicKey(address)) {
+        throw new Error('Freighter cüzdan adresi alınamadı veya geçersiz.');
       }
 
       const reservation_time = getReservationTimestamp(formData.date, formData.time);
       if (!reservation_time) throw new Error('Tarih ve saat geçersiz!');
 
-      const userPublicKey = businessId;
-      const server = new Server('https://soroban-testnet.stellar.org');
-      const account = await server.getAccount(userPublicKey);
+      const server = new rpc.Server(SOROBAN_RPC_URL);
+      const account = await server.getAccount(address);
 
       const tx = new TransactionBuilder(account, {
         fee: BASE_FEE,
@@ -83,45 +81,75 @@ export default function ReservationForm() {
             contract: CONTRACT_ID,
             function: 'create_reservation',
             args: [
-              nativeToScVal(businessId, { type: 'address' }),
+              new Address(address).toScVal(),               // business_id
               nativeToScVal(reservation_time, { type: 'u64' }),
               nativeToScVal(formData.partySize, { type: 'u32' }),
-              nativeToScVal(formData.paymentAmount, { type: 'i128' }),
-              nativeToScVal(formData.paymentAsset, { type: 'address' }),
+              nativeToScVal("10000000", { type: 'i128' }),  // 1 USD
+              new Address(address).toScVal(),               // payment_asset = aynı adres
             ],
           })
         )
         .setTimeout(60)
         .build();
 
-      const signedXDR = await signTransaction(tx.toXDR(), { networkPassphrase: Networks.TESTNET });
+        const simResult = await server.simulateTransaction(tx);
+        console.log('Simülasyon sonucu:', simResult);
 
-      const txPostRes = await fetch(`${SOROBAN_RPC_URL}/transactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transaction: signedXDR }),
-      });
+        const assembledTx = rpc.assembleTransaction(tx, simResult);
 
-      const sendRes = await txPostRes.json();
-      if (sendRes.status !== 'PENDING' && sendRes.status !== 'SUCCESS') {
-        throw new Error(`İşlem gönderilemedi: ${sendRes.errorResult || sendRes.status}`);
-      }
+        const xdr = assembledTx.build().toXDR();
 
-      let txResult = null;
-      for (let i = 0; i < 10; i++) {
-        await new Promise((res) => setTimeout(res, 2000));
-        const txStatusRes = await fetch(`${SOROBAN_RPC_URL}/transaction/${sendRes.hash}`);
-        const txStatus = await txStatusRes.json();
-        if (txStatus.status === 'SUCCESS') {
-          txResult = txStatus;
-          break;
-        } else if (txStatus.status === 'FAILED') {
-          throw new Error('İşlem başarısız.');
-        }
-      }
+        // 🔐 İmzalama — BURAYA EKLE
+        const { signedTxXdr } = await signTransaction(xdr, {
+          networkPassphrase: Networks.TESTNET,
+        });
 
-      if (!txResult) throw new Error('İşlem zaman aşımına uğradı.');
-      setReservationId(sendRes.hash);
+        const signedTx = TransactionBuilder.fromXDR(signedTxXdr, Networks.TESTNET);
+
+        const sendResult = await server.sendTransaction(signedTx);
+
+        console.log('İşlem başarılı:', sendResult);
+        setReservationId(sendResult.hash);
+        
+
+
+      //   // 🔧 Simülasyon auth'ları üretir:
+      //   const sim = await server.simulateTransaction(tx);
+      //   tx.setSorobanData(sim); // 🔐 Auth'lar buraya eklenir
+
+      //   // 🖊️ İmzalama
+      //   const { signedTxXdr } = await signTransaction(tx.toXDR(), {
+      //     networkPassphrase: Networks.TESTNET,
+      //   });
+      //   const signedTx = TransactionBuilder.fromXDR(signedTxXdr, Networks.TESTNET);
+
+      //   // 🚀 Gönderim
+      //   const result = await server.sendTransaction(signedTx);
+
+      //   console.log("XDR:", tx.toXDR());
+
+      //   // Freighter ile imzalama
+      //   const { signedTxXdr }  = await signTransaction(tx.toXDR(), {
+      //     networkPassphrase: Networks.TESTNET,
+      //   });
+      //   if (!signedTxXdr) {
+      //     throw new Error("İmzalanmış işlem alınamadı.");
+      //   }
+
+      //   // XDR'den Transaction nesnesine çevir
+      // const signedTx = TransactionBuilder.fromXDR(signedTxXdr, Networks.TESTNET);
+
+      // // İşlemi submit et
+      // const result = await server.sendTransaction(signedTx);
+
+      // if (!result.hash) {
+      //   throw new Error('İşlem ağına gönderilemedi.');
+      // }
+
+      // console.log('İşlem başarılı:', result);
+      // setReservationId(result.hash);
+
+
     } catch (err: any) {
       setError(err.message || 'Bilinmeyen hata!');
     } finally {
@@ -204,7 +232,7 @@ export default function ReservationForm() {
       {reservationId && (
         <div className="mt-4 p-4 bg-green-900 rounded-md">
           <p className="text-white font-medium">Rezervasyon başarıyla oluşturuldu!</p>
-          <p className="text-white mt-2">Rezervasyon ID:</p>
+          <p className="text-white mt-2">İşlem Hash:</p>
           <p className="text-white break-all mt-1">{reservationId}</p>
         </div>
       )}
