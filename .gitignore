@@ -44,3 +44,5 @@ Cargo.lock
 
 # Soroban
 .soroban/ 
+
+*.mp4
