@@ -30,7 +30,7 @@ interface ReservationFormData {
 }
 
 interface ReservationFormProps {
-  onReservationCreated?: () => void;
+  onReservationCreated?: (reservationId: string) => void;
 }
 
 const CONTRACT_ID = process.env.NEXT_PUBLIC_CONTRACT_ID!;
@@ -204,7 +204,7 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
             
             // Başarılı olduğunda callback'i çağır ve formu temizle
             if (onReservationCreated) {
-              onReservationCreated();
+              onReservationCreated(id.toString());
             }
             
             // Formu temizle

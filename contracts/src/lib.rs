@@ -50,7 +50,7 @@ impl ReserveLContract {
         reservation_time: u64,
         party_size: u32,
         payment_amount: i128,
-        payment_asset: Option<Address>,
+        _payment_asset: Option<Address>,
     ) -> u64 {
         business_id.require_auth();
 
@@ -149,12 +149,11 @@ impl ReserveLContract {
                     let loyalty_client = token::Client::new(&env, &loyalty_token_id);
                     let loyalty_amount: i128 = 100 * 10i128.pow(7);
 
-                    let owner_key = Symbol::new(&env, "owner");
-                    let minter_address: Address = env.storage().instance().get(&owner_key).expect("Owner not set");
-                    minter_address.require_auth();
+                    let business = reservation.business_id.clone();
+                    business.require_auth();
 
                     let customer = reservation.customer_id.clone().expect("Customer not assigned");
-                    loyalty_client.transfer(&minter_address, &customer, &loyalty_amount);
+                    loyalty_client.transfer(&business, &customer, &loyalty_amount);
 
                     reservation.loyalty_issued = true;
                 }

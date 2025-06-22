@@ -105,9 +105,18 @@ export default function ConfirmationDetails({ reservation, blockchainStatus }: C
           </div>
           <div>
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sadakat Puanı</h3>
-            <p className="font-medium text-gray-900 text-sm">
-              {reservation.loyaltyTokensSent ? 'Verildi' : 'Verilmedi'}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className={`font-medium text-sm ${
+                reservation.loyaltyTokensSent ? 'text-green-600' : 'text-gray-600'
+              }`}>
+                {reservation.loyaltyTokensSent ? '🎁 100 Token Verildi' : '⏳ Token Bekliyor'}
+              </p>
+              {reservation.loyaltyTokensSent && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  ✓ Tamamlandı
+                </span>
+              )}
+            </div>
           </div>
           {reservation.customerAddress && (
             <div>

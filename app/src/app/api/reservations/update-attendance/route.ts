@@ -3,7 +3,7 @@ import { connectDB, Reservation } from '@/lib/db';
 
 // Bu route, rezervasyonların gelme durumunu (attendance) güncellemek için kullanılır:
 // POST: Rezervasyonun gelme durumunu günceller (not_arrived, arrived, no_show)
-// arrived: Müşteri geldiğinde status 'completed' olur
+// arrived: Müşteri geldiğinde status 'completed' olur ve sadakat token'ı verilir
 // no_show: Müşteri gelmediğinde confirmationStatus 'cancelled', status 'cancelled' olur
 // not_arrived: Varsayılan durum, herhangi bir değişiklik yapmaz
 
@@ -45,6 +45,10 @@ export async function POST(request: Request) {
     // Geldi olarak işaretlendiğinde
     if (attendanceStatus === 'arrived') {
       updateData.status = 'completed';
+      // Sadakat token'ı henüz verilmemişse, verildi olarak işaretle
+      if (!existingReservation.loyaltyTokensSent) {
+        updateData.loyaltyTokensSent = true;
+      }
     }
     
     // Gelmedi olarak işaretlendiğinde
@@ -68,7 +72,8 @@ export async function POST(request: Request) {
     
     return NextResponse.json({
       message: 'Gelme durumu başarıyla güncellendi',
-      reservation: updatedReservation
+      reservation: updatedReservation,
+      loyaltyTokenIssued: attendanceStatus === 'arrived' && !existingReservation.loyaltyTokensSent
     });
     
   } catch (error) {

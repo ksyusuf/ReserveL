@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Button from '../ui/Button';
 import { formatDate, formatTime } from '@/lib/utils';
+import { updateReservationStatusOnContract, initializeContract } from '@/contracts/contractActions';
 
 interface Reservation {
   reservationId: string;
@@ -14,19 +15,23 @@ interface Reservation {
   attendanceStatus: 'not_arrived' | 'arrived' | 'no_show';
   confirmationStatus: 'pending' | 'confirmed' | 'cancelled';
   loyaltyTokensSent: boolean;
+  blockchainReservationId: string;
   notes?: string;
   status: 'confirmed' | 'cancelled';
 }
 
 interface ReservationListProps {
   onReservationCreated?: () => void;
+  lastCreatedReservationId?: string | null;
 }
 
-export default function ReservationList({ onReservationCreated }: ReservationListProps) {
+export default function ReservationList({ onReservationCreated, lastCreatedReservationId }: ReservationListProps) {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [updatingContract, setUpdatingContract] = useState<string | null>(null);
+  const [initializingContract, setInitializingContract] = useState(false);
 
   const fetchReservations = async () => {
     try {
@@ -132,10 +137,55 @@ export default function ReservationList({ onReservationCreated }: ReservationLis
     }
   };
 
+  const updateContractStatus = async (blockchainReservationId: string, newStatus: 'Completed' | 'NoShow') => {
+    console.log('🔍 updateContractStatus başladı:', { blockchainReservationId, newStatus });
+    setUpdatingContract(blockchainReservationId);
+    setError(null);
+    
+    // Eğer bu yeni oluşturulan rezervasyon ise, lastCreatedReservationId'yi kullan
+    let blockchainId = lastCreatedReservationId;
+    
+    // Hala yoksa, rezervasyonu bul ve blockchain ID'sini al
+    if (!blockchainId) {
+      console.log('🔍 lastCreatedReservationId yok, rezervasyon aranıyor...');
+      const reservation = reservations.find(r => r.blockchainReservationId === blockchainReservationId);
+      console.log('🔍 bulunan rezervasyon:', reservation);
+      
+      if (!reservation || !reservation.blockchainReservationId) {
+        console.error('❌ Blockchain rezervasyon ID bulunamadı');
+        setError('Blockchain rezervasyon ID bulunamadı. Bu rezervasyon eski bir rezervasyon olabilir.');
+        setUpdatingContract(null);
+        return;
+      }
+      blockchainId = reservation.blockchainReservationId;
+    }
+    
+    console.log('🔍 Blockchain ID kullanılıyor:', blockchainId);
+    console.log('🔍 updateReservationStatusOnContract çağrılıyor...');
+    const result = await updateReservationStatusOnContract(blockchainId, newStatus);
+    console.log('🔍 updateReservationStatusOnContract sonucu:', result);
+    
+    if (result.success) {
+      console.log('✅ Kontrat güncelleme başarılı!');
+      if (newStatus === 'Completed') {
+        console.log('🔍 Alert gösteriliyor...');
+        alert(`✅ Sadakat token'ı başarıyla müşteri cüzdanına gönderildi!\n\nTransaction Hash: ${result.hash}\n\nStellar Expert'te görüntülemek için: https://stellar.expert/explorer/testnet/tx/${result.hash}`);
+      }
+      console.log('🔍 Rezervasyonlar yenileniyor...');
+      await fetchReservations();
+    } else {
+      console.error('❌ Kontrat güncelleme hatası:', result.error);
+      setError(`Kontrat güncellenirken hata: ${result.error}`);
+    }
+    setUpdatingContract(null);
+  };
+
   const updateAttendanceStatus = async (
     reservationId: string,
-    attendanceStatus: 'not_arrived' | 'arrived' | 'no_show'
+    attendanceStatus: 'not_arrived' | 'arrived' | 'no_show',
+    blockchainReservationId?: string
   ) => {
+    console.log('🔍 updateAttendanceStatus başladı:', { reservationId, attendanceStatus });
     try {
       setError(null);
       const response = await fetch('/api/reservations/update-attendance', {
@@ -151,10 +201,59 @@ export default function ReservationList({ onReservationCreated }: ReservationLis
         throw new Error(errorData.error || 'Gelme durumu güncellenirken bir hata oluştu');
       }
 
+      console.log('🔍 API güncelleme başarılı, kontrat güncelleme kontrol ediliyor...');
+
+      // Eğer müşteri geldi olarak işaretlendiyse, kontrat durumunu da güncelle
+      if (attendanceStatus === 'arrived') {
+        if (blockchainReservationId) {
+          console.log('🔍 Müşteri geldi, kontrat durumu Completed olarak güncelleniyor...');
+          await updateContractStatus(blockchainReservationId, 'Completed');
+        } else {
+          console.log('⚠️ blockchainReservationId yok, kontrat güncellemesi yapılmıyor');
+        }
+      } else if (attendanceStatus === 'no_show') {
+        if (blockchainReservationId) {
+          console.log('🔍 Müşteri gelmedi, kontrat durumu NoShow olarak güncelleniyor...');
+          await updateContractStatus(blockchainReservationId, 'NoShow');
+        } else {
+          console.log('⚠️ blockchainReservationId yok, kontrat güncellemesi yapılmıyor');
+        }
+      }
+
+      console.log('🔍 Rezervasyonlar yenileniyor...');
       await fetchReservations();
     } catch (error) {
-      console.error('Error updating attendance status:', error);
+      console.error('❌ updateAttendanceStatus hatası:', error);
       setError('Gelme durumu güncellenirken bir hata oluştu. Lütfen tekrar deneyin.');
+    }
+  };
+
+  const handleInitializeContract = async () => {
+    console.log('🔍 handleInitializeContract başladı');
+    
+    // Statik loyalty token ID kullanılıyor
+    // Bu token testnet'te oluşturulmuş örnek sadakat token'ıdır
+    const loyaltyTokenId = 'CCLWOTOK72Z5QOJJWHGCUCBWHHEA2MPP35CYW4QXXWRCYSZ5F7NMANRJ';
+    
+    setInitializingContract(true);
+    setError(null);
+    
+    try {
+      const result = await initializeContract(loyaltyTokenId);
+      console.log('🔍 initializeContract sonucu:', result);
+      
+      if (result.success) {
+        console.log('✅ Kontrat başarıyla initialize edildi!');
+        alert(`✅ Kontrat başarıyla initialize edildi!\n\nTransaction Hash: ${result.hash}\n\nStellar Expert'te görüntülemek için: https://stellar.expert/explorer/testnet/tx/${result.hash}`);
+      } else {
+        console.error('❌ Kontrat initialize hatası:', result.error);
+        setError(`Kontrat initialize edilirken hata: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('❌ handleInitializeContract hatası:', error);
+      setError('Kontrat initialize edilirken bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setInitializingContract(false);
     }
   };
 
@@ -187,6 +286,17 @@ export default function ReservationList({ onReservationCreated }: ReservationLis
 
   return (
     <div className="space-y-4">
+      {/* Initialize Contract Button */}
+      <div className="flex justify-end">
+        <Button
+          onClick={handleInitializeContract}
+          disabled={initializingContract}
+          className="bg-purple-600 hover:bg-purple-700 text-white"
+        >
+          {initializingContract ? 'Kontrat Initialize Ediliyor...' : 'Kontratı Initialize Et'}
+        </Button>
+      </div>
+      
       <div className="grid gap-4">
         {reservations.map((reservation) => (
           <div
@@ -221,7 +331,7 @@ export default function ReservationList({ onReservationCreated }: ReservationLis
                         ? 'bg-green-600 hover:bg-green-700 text-white'
                         : 'border-green-500 text-green-500 hover:bg-green-500/10'
                       }
-                      onClick={() => updateAttendanceStatus(reservation.reservationId, 'arrived')}
+                      onClick={() => updateAttendanceStatus(reservation.reservationId, 'arrived', reservation.blockchainReservationId)}
                     >
                       Geldi
                     </Button>
@@ -229,7 +339,7 @@ export default function ReservationList({ onReservationCreated }: ReservationLis
                       size="sm"
                       variant="outline"
                       className="border-orange-500 text-orange-500 hover:bg-orange-500/10"
-                      onClick={() => updateAttendanceStatus(reservation.reservationId, 'no_show')}
+                      onClick={() => updateAttendanceStatus(reservation.reservationId, 'no_show', reservation.blockchainReservationId)}
                     >
                       Gelmedi
                     </Button>
@@ -255,10 +365,10 @@ export default function ReservationList({ onReservationCreated }: ReservationLis
                         ? 'bg-green-600 hover:bg-green-700 text-white' 
                         : 'border-green-500 text-green-500 hover:bg-green-500/10'
                       }
-                      onClick={() => updateAttendanceStatus(reservation.reservationId, 'arrived')}
-                      disabled={reservation.attendanceStatus === 'arrived'}
+                      onClick={() => updateAttendanceStatus(reservation.reservationId, 'arrived', reservation.blockchainReservationId)}
+                      disabled={reservation.attendanceStatus === 'arrived' || updatingContract === reservation.reservationId}
                     >
-                      Geldi
+                      {updatingContract === reservation.reservationId ? 'Token Veriliyor...' : 'Geldi'}
                     </Button>
                     <Button
                       size="sm"
@@ -267,7 +377,7 @@ export default function ReservationList({ onReservationCreated }: ReservationLis
                         ? 'bg-orange-600 hover:bg-orange-700 text-white' 
                         : 'border-orange-500 text-orange-500 hover:bg-orange-500/10'
                       }
-                      onClick={() => updateAttendanceStatus(reservation.reservationId, 'no_show')}
+                      onClick={() => updateAttendanceStatus(reservation.reservationId, 'no_show', reservation.blockchainReservationId)}
                       disabled={reservation.attendanceStatus === 'no_show'}
                     >
                       Gelmedi
@@ -306,6 +416,17 @@ export default function ReservationList({ onReservationCreated }: ReservationLis
                     ? 'Onay Bekliyor'
                     : 'Onay Bekliyor'}
                 </span>
+                
+                {/* Loyalty Token Status */}
+                {reservation.attendanceStatus === 'arrived' && (
+                  <span className={`inline-block px-2 py-1 rounded text-xs ${
+                    reservation.loyaltyTokensSent
+                      ? 'bg-purple-500/20 text-purple-400'
+                      : 'bg-blue-500/20 text-blue-400'
+                  }`}>
+                    {reservation.loyaltyTokensSent ? '🎁 Token Verildi' : '⏳ Token Bekliyor'}
+                  </span>
+                )}
               </div>
             </div>
           </div>

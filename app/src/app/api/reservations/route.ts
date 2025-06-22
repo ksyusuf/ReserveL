@@ -150,6 +150,7 @@ export async function GET(request: Request) {
       attendanceStatus: reservation.attendanceStatus || 'not_arrived',
       confirmationStatus: reservation.confirmationStatus,
       loyaltyTokensSent: reservation.loyaltyTokensSent,
+      blockchainReservationId: reservation.blockchainReservationId,
       businessId: reservation.businessId,
       customerId: reservation.customerId,
       notes: reservation.notes,

@@ -68,7 +68,7 @@ https://stellar.expert/explorer/testnet/contract/CDHFV27NLOSUEIT7VF5QTQZKEQCWDVT
 stellar cli ile örnek deploy;
 
 stellar contract invoke \
-  --id CA6V7EYBCZ3KPYGG5FB5L5KNAKPPL3KG2GG6V2ZZEA2L3BA3N66GUFOR \
+  --id CCLWOTOK72Z5QOJJWHGCUCBWHHEA2MPP35CYW4QXXWRCYSZ5F7NMANRJ \
   --network testnet \
   --source-account alice \
   -- create_reservation \
