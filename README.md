@@ -1,82 +1,75 @@
-# ReserveL Smart Contract
+# ReserveL Next.js Application
 
-Bu dizin, ReserveL projesinin Stellar Soroban akıllı kontratını içerir.
+This is the frontend/backend application for the ReserveL project, built with Next.js 14 ~ Stellar.
 
-## Gereksinimler
 
-- Rust ve Cargo
-- Soroban CLI (sürüm 22.8.1 veya üzeri)
-- WSL (Windows için)
+## Canlı Demo --> [https://reserve-l.vercel.app](https://reserve-l.vercel.app) 
 
-## Build ve Deploy Süreci
+## Demo Video --> [Demo Video](https://docs.google.com/presentation/d/1jVmmhu-9s1BxH5Lb9E-g_E329t31vDygHdGbeKyrVuo/edit?slide=id.g36a2476a8a5_0_2234#slide=id.g36a2476a8a5_0_2234)
 
-### 1. Test Hesabı Oluşturma
+## Getting Started
 
-```bash
-# Test hesabı oluştur
-soroban keys generate test1
-
-# Hesabın public key'ini al
-TEST_ADDRESS=$(soroban keys address test1)
-
-# Hesabı test tokenleri ile fonla
-curl "https://friendbot.stellar.org/?addr=$TEST_ADDRESS"
-
-# Hesap bilgilerini kontrol et
-soroban keys show test1
-```
-
-### 2. Kontratı Build Etme
+First, install the dependencies:
 
 ```bash
-# Eski build dosyalarını temizle
-rm -rf target/
-
-# Kontratı build et
-soroban contract build
+npm install
+# or
+yarn install
 ```
 
-### 3. Kontratı Deploy Etme
+Then, run the development server:
 
 ```bash
-soroban contract deploy \
-    --wasm target/wasm32v1-none/release/reservel_contract.wasm \
-    --source test1 \
-    --network testnet
+npm run dev
+# or
+yarn dev
 ```
 
-Deploy işlemi başarılı olduğunda, terminal size bir kontrat ID'si verecektir. Bu ID'yi not alın, kontratınızla etkileşime geçmek için buna ihtiyacınız olacak.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Kontrat ID
+## Project Structure
+
+- `/src/app` - Next.js App Router pages and API routes
+- `/src/components` - React components
+- `/src/lib` - Utility functions and shared code
+
+## Environment Variables
+
+Create a `.env` file in the root directory with the following variables:
 
 ```
-CAGSYHLNLJH6HXNKUXPEWQBQMIJOIZUGSTK766ORDVFU6NWTAJGFZV7V
+MONGODB_URI=your_mongodb_uri
+STELLAR_NETWORK=testnet
 ```
 
-## Kontrat İşlemleri
+## Contract Initialization
 
-Kontratı test etmek ve işlemler yapmak için Stellar Expert üzerinden kontrat adresini kontrol edebilirsiniz:
-https://stellar.expert/explorer/testnet/contract/CDHFV27NLOSUEIT7VF5QTQZKEQCWDVTGXLAUEQEOZBT7AVLZJEIBRJGF
+To initialize the smart contract (required for loyalty token functionality), follow these steps:
 
-## Önemli Notlar
+1. **Open Browser Developer Tools:**
+   - Press `F12` or right-click and select "Inspect"
+   - Go to the "Console" tab
 
-1. Her deploy işleminden önce kontratı yeniden build etmeyi unutmayın.
-2. Test hesabınızın yeterli XLM'ye sahip olduğundan emin olun.
-3. Kontrat ID'sini güvenli bir yerde saklayın.
-4. WSL üzerinde çalışırken Windows dizinlerine `/mnt/c/...` şeklinde erişebilirsiniz. 
+2. **Navigate to Business Dashboard:**
+   - Go to `http://localhost:3000/business-dashboard`
 
-stellar cli ile örnek deploy;
+3. **Initialize Contract:**
+   - In the console, simply run:
+   ```javascript
+   initializeReserveLContract()
+   ```
 
-stellar contract invoke \
-  --id CBJVOQBNZ2ZRULWNRDWSF2A74747YQFEGZN4YAQQK44RCUTRG3THHEND \
-  --network testnet \
-  --source-account alice \
-  -- create_reservation \
-    --business_id GC5D6JM4YP3CEZNUZ6FMDD4L26XVUO3GKLCU4SHAYNRTMRWB6FMYRKBC \
-    --reservation_time 1730000000 \
-    --party_size 2 \
-    --payment_amount 10000000 \
-    --payment_asset GC5D6JM4YP3CEZNUZ6FMDD4L26XVUO3GKLCU4SHAYNRTMRWB6FMYRKBC
+4. **Check Results:**
+   - The function will show success/error messages in the console
+   - A popup will also display the transaction hash if successful
+   - You can view the transaction on Stellar Expert using the provided link
 
-cli ile deploy;
-stellar contract deploy   --wasm target/wasm32v1-none/release/reservel_contract.wasm   --network testnet --source-account SDBCUEVN5ITAW2UFXMB5RMQBPWBAZMELQU7LHTPXLLB6EFXISUO3LGHA
+**Note:** Contract initialization is only needed once per deployment. After initialization, the loyalty token system will work automatically for all reservations.
+
+## Learn More
+
+To learn more about the technologies used in this project:
+
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Stellar Documentation](https://developers.stellar.org/docs)
+- [Soroban Documentation](https://soroban.stellar.org/docs)
