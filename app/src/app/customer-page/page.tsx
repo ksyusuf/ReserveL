@@ -16,6 +16,7 @@ import {
   StrKey,
 } from '@stellar/stellar-sdk';
 import { requestAccess } from '@stellar/freighter-api';
+import { Suspense } from 'react';
 
 const CONTRACT_ID = process.env.NEXT_PUBLIC_CONTRACT_ID!;
 const SOROBAN_RPC_URL = 'https://soroban-testnet.stellar.org';
@@ -120,7 +121,7 @@ function parseReservation(scval: any, reservationId: string) {
   };
 }
 
-export default function CustomerPage() {
+function CustomerPage() {
   const searchParams = useSearchParams();
   const reservationId = searchParams.get('reservationId');
   const [reservation, setReservation] = useState<any | null>(null);
@@ -377,5 +378,13 @@ export default function CustomerPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div>Yükleniyor...</div>}>
+      <CustomerPage />
+    </Suspense>
   );
 } 
