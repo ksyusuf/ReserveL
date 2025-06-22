@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import ReservationForm from '@/components/business/ReservationForm';
 import ReservationList from '@/components/business/ReservationList';
+import { getRandomBusinessName } from '@/lib/utils';
 
 export default function BusinessDashboard() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [lastCreatedReservationId, setLastCreatedReservationId] = useState<string | null>(null);
+  const businessName = useMemo(() => getRandomBusinessName(), []);
 
   const handleReservationCreated = (reservationId: string) => {
     setLastCreatedReservationId(reservationId);
@@ -21,6 +23,7 @@ export default function BusinessDashboard() {
           <p className="text-xl text-gray-300 font-medium">
             Rezervasyonları yönetin ve yeni rezervasyonlar oluşturun
           </p>
+          <p className="text-lg text-blue-300 font-semibold mt-2">{businessName}</p>
         </div>
 
         <div className="grid gap-8 md:grid-cols-3">

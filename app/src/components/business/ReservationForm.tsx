@@ -266,7 +266,7 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">Tarih</label>
           <input
@@ -287,9 +287,6 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
             required
           />
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">Kişi Sayısı</label>
           <input
@@ -301,19 +298,9 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
             required
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Müşteri ID</label>
-          <input
-            type="text"
-            value={formData.customerId}
-            onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
-            className="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm py-2 px-3"
-            placeholder="Opsiyonel"
-          />
-        </div>
       </div>
 
-      <div>
+      <div className="mt-6 border-t border-gray-600 pt-4">
         <label className="block text-sm font-medium text-gray-300 mb-1">Notlar</label>
         <textarea
           value={formData.notes}
@@ -327,7 +314,7 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
+        className="w-full mt-6 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm font-medium shadow-lg transition-all"
       >
         {loading ? 'Rezervasyon Oluşturuluyor...' : 'Rezervasyon Oluştur'}
       </button>

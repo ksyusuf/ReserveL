@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Button from '../ui/Button';
 import { formatDate, formatTime } from '@/lib/utils';
 import { updateReservationStatusOnContract, initializeContract } from '@/contracts/contractActions';
@@ -66,6 +66,20 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
   const [updatingContract, setUpdatingContract] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Yoruma özel URL oluşturucu
+  const getApprovalUrl = useCallback((reservationId: string) => {
+    return `http://localhost:3000/customer-page?reservationId=${reservationId}`;
+  }, []);
+
+  // Panoya kopyalama fonksiyonu
+  const handleCopyUrl = useCallback((reservationId: string) => {
+    const url = getApprovalUrl(reservationId);
+    navigator.clipboard.writeText(url);
+    setCopiedId(reservationId);
+    setTimeout(() => setCopiedId(null), 1500);
+  }, [getApprovalUrl]);
 
   const fetchReservations = async () => {
     try {
@@ -412,19 +426,20 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
         {reservations.map((reservation) => (
           <div
             key={reservation.reservationId}
-            className="bg-gradient-to-r from-gray-800/50 to-gray-900/50 border border-gray-700/50 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-gray-600/50"
+            className="relative bg-gradient-to-r from-gray-800/50 to-gray-900/50 border border-gray-700/50 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-gray-600/50"
           >
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex-1">
+            <div className="flex flex-col md:flex-row justify-between gap-6">
+              {/* SOL: Müşteri ve rezervasyon bilgileri */}
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-3 mb-2">
                   <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                     <span className="text-white font-semibold text-sm">
                       {reservation.customerName?.charAt(0)?.toUpperCase() || 'M'}
                     </span>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-white text-lg">{reservation.customerName || 'Müşteri Adı'}</h3>
-                    <p className="text-sm text-gray-400 flex items-center">
+                  <div className="truncate">
+                    <h3 className="font-semibold text-white text-lg truncate">{reservation.customerName || 'Müşteri Adı'}</h3>
+                    <p className="text-sm text-gray-400 flex items-center truncate">
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                       </svg>
@@ -432,98 +447,120 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
                     </p>
                   </div>
                 </div>
-
-                {/* Notes Section */}
-                {editingNotes === reservation.reservationId ? (
-                  <div className="mt-3 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
-                    <p className="text-sm text-blue-300 font-medium mb-2">📝 Not:</p>
-                    <textarea
-                      value={noteText}
-                      onChange={(e) => setNoteText(e.target.value)}
-                      className="w-full p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg text-white text-sm resize-none"
-                      rows={3}
-                      placeholder="Not ekleyin..."
-                    />
-                    <div className="flex gap-2 mt-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-green-500 text-green-500 hover:bg-green-500/10 text-xs"
-                        onClick={() => handleSaveNotes(reservation.reservationId)}
-                      >
-                        Kaydet
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-red-500 text-red-500 hover:bg-red-500/10 text-xs"
-                        onClick={handleCancelEdit}
-                      >
-                        İptal
-                      </Button>
-                    </div>
+                <div className="flex flex-wrap gap-4 mt-2 text-sm text-gray-300">
+                  <div className="flex items-center gap-1">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    {formatDate(reservation.date)}
                   </div>
-                ) : reservation.notes ? (
-                  <div className="mt-3 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <p className="text-sm text-blue-300 font-medium mb-1">📝 Not:</p>
-                        <p className="text-sm text-blue-200 italic">"{reservation.notes}"</p>
+                  <div className="flex items-center gap-1">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {formatTime(reservation.time)}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    {reservation.numberOfPeople || 0} kişi
+                  </div>
+                </div>
+                {/* Onay URL kopyala butonu - sol tarafta, müşteri bilgilerinin altında */}
+                <div className="relative mt-3 inline-block">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-200 border border-blue-500/40 rounded px-2 py-1 bg-gray-900/70 backdrop-blur transition"
+                    onClick={() => handleCopyUrl(reservation.blockchainReservationId)}
+                    title="Onay URL'sini kopyala"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16h8a2 2 0 002-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v6a2 2 0 002 2zm0 0v2a2 2 0 002 2h4a2 2 0 002-2v-2" /></svg>
+                    Onay URL
+                  </button>
+                  {copiedId === reservation.blockchainReservationId && (
+                    <div className="absolute left-1/2 -translate-x-1/2 -top-8 bg-gray-800 text-white text-xs px-3 py-1 rounded shadow z-20 animate-fade-in">
+                      Kopyalandı!
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* SAĞ: Not kutusu */}
+              <div className="flex flex-col items-end min-w-[220px] max-w-xs w-full">
+                <div className="mb-2 w-[220px] flex items-start">
+                  {editingNotes === reservation.reservationId ? (
+                    <div className="p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg w-full flex flex-col min-h-[48px] sm:min-h-[60px] md:min-h-[80px] lg:min-h-[100px] max-h-[120px] md:max-h-[160px]">
+                      <p className="text-sm text-blue-300 font-medium mb-2 flex items-center justify-between">
+                        <span>📝 Not:</span>
+                        <button
+                          type="button"
+                          className="ml-2 flex items-center gap-1 text-xs text-blue-400 hover:text-blue-200 border border-blue-500/40 rounded px-2 py-1 transition"
+                          onClick={() => handleCopyUrl(reservation.blockchainReservationId)}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16h8a2 2 0 002-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v6a2 2 0 002 2zm0 0v2a2 2 0 002 2h4a2 2 0 002-2v-2" /></svg>
+                          {copiedId === reservation.reservationId ? 'Kopyalandı!' : 'Onay URL'}
+                        </button>
+                      </p>
+                      <textarea
+                        value={noteText}
+                        onChange={(e) => setNoteText(e.target.value)}
+                        className="w-full flex-1 bg-blue-900/20 border border-blue-500/30 rounded-lg text-white text-sm resize-none min-h-[24px] sm:min-h-[32px] md:min-h-[48px] lg:min-h-[64px] max-h-[60px] md:max-h-[100px]"
+                        rows={2}
+                        placeholder="Not ekleyin..."
+                      />
+                      <div className="flex gap-2 mt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-green-500 text-green-500 hover:bg-green-500/10 text-xs"
+                          onClick={() => handleSaveNotes(reservation.reservationId)}
+                        >
+                          Kaydet
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-red-500 text-red-500 hover:bg-red-500/10 text-xs"
+                          onClick={handleCancelEdit}
+                        >
+                          İptal
+                        </Button>
+                      </div>
+                    </div>
+                  ) : reservation.notes ? (
+                    <div className="p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg w-full flex flex-col justify-between min-h-[48px] sm:min-h-[60px] md:min-h-[80px] lg:min-h-[100px] max-h-[120px] md:max-h-[160px]">
+                      <div>
+                        <p className="text-sm text-blue-300 font-medium mb-1 flex items-center justify-between">
+                          <span>📝 Not:</span>
+                        </p>
+                        <p className="text-sm text-blue-200 italic break-words line-clamp-3">"{reservation.notes}"</p>
                       </div>
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-blue-500 text-blue-500 hover:bg-blue-500/10 text-xs ml-2"
+                        className="border-blue-500 text-blue-500 hover:bg-blue-500/10 text-xs mt-2 self-end"
                         onClick={() => handleEditNotes(reservation)}
                       >
                         Düzenle
                       </Button>
                     </div>
-                  </div>
-                ) : (
-                  <div className="mt-3">
+                  ) : (
                     <Button
                       size="sm"
                       variant="outline"
-                      className="border-blue-500 text-blue-500 hover:bg-blue-500/10 text-xs"
+                      className="border-blue-500 text-blue-500 hover:bg-blue-500/10 text-xs w-full min-h-[48px] sm:min-h-[60px] md:min-h-[80px] lg:min-h-[100px] max-h-[120px] md:max-h-[160px]"
                       onClick={() => handleEditNotes(reservation)}
                     >
                       + Not Ekle
                     </Button>
-                  </div>
-                )}
-              </div>
-
-              <div className="text-right ml-4">
-                <div className="flex items-center space-x-2 mb-2">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <p className="text-sm text-white font-medium">
-                    {formatDate(reservation.date)}
-                  </p>
-                </div>
-                <div className="flex items-center space-x-2 mb-2">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="text-sm text-white font-medium">
-                    {formatTime(reservation.time)}
-                  </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  <p className="text-sm text-gray-400">
-                    {reservation.numberOfPeople || 0} kişi
-                  </p>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Action Buttons and Status */}
-            <div className="flex justify-between items-center pt-4 border-t border-gray-700/50">
+            {/* Action Buttons and Status (eski haliyle) */}
+            <div className="flex justify-between items-center pt-4 border-t border-gray-700/50 mt-4">
               <div className="flex space-x-2">
                 {reservation.confirmationStatus === 'pending' && (
                   <>
@@ -614,7 +651,6 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
                   </>
                 )}
               </div>
-              
               <div className="flex flex-col items-end space-y-2">
                 {/* Confirmation Status */}
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
@@ -649,7 +685,6 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
                     ? 'Onay Bekliyor'
                     : 'Onay Bekliyor'}
                 </span>
-                
                 {/* Loyalty Token Status */}
                 {reservation.attendanceStatus === 'arrived' && (
                   <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${

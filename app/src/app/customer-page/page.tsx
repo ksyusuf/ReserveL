@@ -337,43 +337,44 @@ export default function CustomerPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto space-y-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-white mb-4">Rezervasyon Onayı</h1>
-          <p className="text-xl text-gray-300">
-            Rezervasyonunuzu onaylayın
-          </p>
-        </div>
+    <div className="min-h-screen bg-gray-900/90 rounded-2xl">
+      <div className="container mx-auto px-4 py-10">
+        <div className="w-full max-w-3xl mx-auto space-y-8">
+          <div className="text-center">
+            <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-3 tracking-tight drop-shadow">ReserveL</h1>
+            <p className="text-lg md:text-xl text-blue-200 font-medium mb-1">Rezervasyonunuzu onaylayın ve avantajlardan yararlanın</p>
+            <p className="text-base text-blue-300 font-semibold">Stellar blockchain ile güvenli rezervasyon</p>
+          </div>
 
-        <div className="bg-background-light rounded-xl p-6 shadow-lg">
-          <ConfirmationDetails 
-            reservation={reservationStatus}
-            blockchainStatus={blockchainReservation?.status}
-          />
-        </div>
-
-        {reservationStatus.status === 'pending' && reservationStatus && (
-          <div className="bg-background-light rounded-xl p-6 shadow-lg mt-4">
-            <PaymentSection 
-              reservationId={reservationId!}
-              businessId={reservationStatus.businessId}
-              reservationStatus={reservationStatus}
-              onSuccess={handleConfirmationSuccess}
+          <div className="bg-gray-900/80 border border-gray-700 rounded-xl p-6 shadow-lg backdrop-blur-sm">
+            <ConfirmationDetails 
+              reservation={reservationStatus}
+              blockchainStatus={blockchainReservation?.status}
             />
           </div>
-        )}
 
-        {reservationStatus.confirmationStatus === 'confirmed' && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-            <h2 className="text-xl font-semibold text-green-800 mb-2">
-              Rezervasyon Onaylandı!
-            </h2>
-            <p className="text-green-600">
-              Rezervasyonunuz başarıyla onaylandı. Belirtilen tarih ve saatte görüşmek üzere!
-            </p>
-          </div>
-        )}
+          {reservationStatus.status === 'pending' && reservationStatus && (
+            <div className="bg-gray-900/80 border border-gray-700 rounded-xl p-6 shadow-lg mt-4 backdrop-blur-sm">
+              <PaymentSection 
+                reservationId={reservationId!}
+                businessId={reservationStatus.businessId}
+                reservationStatus={reservationStatus}
+                onSuccess={handleConfirmationSuccess}
+              />
+            </div>
+          )}
+
+          {reservationStatus.confirmationStatus === 'confirmed' && (
+            <div className="bg-green-900/30 border border-green-500/40 rounded-xl p-6 text-center backdrop-blur-sm">
+              <h2 className="text-xl font-semibold text-green-800 mb-2">
+                Rezervasyon Onaylandı!
+              </h2>
+              <p className="text-green-600">
+                Rezervasyonunuz başarıyla onaylandı. Belirtilen tarih ve saatte görüşmek üzere!
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

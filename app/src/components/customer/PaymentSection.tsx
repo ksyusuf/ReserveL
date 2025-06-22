@@ -41,11 +41,11 @@ export default function PaymentSection({
   // Rezervasyon zaten onaylanmışsa işlemi engelle
   if (reservationStatus.confirmationStatus === 'confirmed') {
     return (
-      <div className="space-y-4">
-        <div className="bg-green-50 p-4 rounded-lg">
-          <h2 className="text-lg font-semibold text-green-900 mb-2">Rezervasyon Zaten Onaylandı</h2>
-          <p className="text-green-700">
-            Bu rezervasyon zaten onaylanmış ve ödeme tamamlanmıştır. 
+      <div className="flex justify-center items-center min-h-[200px]">
+        <div className="bg-green-50 border border-green-400 shadow-sm p-6 rounded-xl max-w-md w-full text-center">
+          <h2 className="text-2xl font-bold text-green-900 mb-2">Rezervasyon Onaylandı</h2>
+          <p className="text-green-800 text-base">
+            Bu rezervasyon zaten <span className="font-semibold">onaylanmış</span> ve ödeme tamamlanmıştır.<br/>
             Herhangi bir işlem yapmanıza gerek yoktur.
           </p>
         </div>
@@ -56,11 +56,11 @@ export default function PaymentSection({
   // Rezervasyon iptal edilmişse bilgilendir
   if (reservationStatus.confirmationStatus === 'cancelled') {
     return (
-      <div className="space-y-4">
-        <div className="bg-red-50 p-4 rounded-lg">
-          <h2 className="text-lg font-semibold text-red-900 mb-2">Rezervasyon İptal Edildi</h2>
-          <p className="text-red-700">
-            Bu rezervasyon iptal edilmiştir. Onaylama işlemi yapılamaz.
+      <div className="flex justify-center items-center min-h-[200px]">
+        <div className="bg-red-50 border border-red-400 shadow-sm p-6 rounded-xl max-w-md w-full text-center">
+          <h2 className="text-2xl font-bold text-red-900 mb-2">Rezervasyon İptal Edildi</h2>
+          <p className="text-red-800 text-base">
+            Bu rezervasyon <span className="font-semibold">iptal edilmiştir</span>. Onaylama işlemi yapılamaz.
           </p>
         </div>
       </div>
@@ -85,30 +85,6 @@ export default function PaymentSection({
 
       // 3. Transaction oluştur
       console.log('DEBUG: nativeToScVal input:', reservationId);
-
-      // // 1. ÖDEME TRANSAKSIYONU
-      // const paymentTx = new TransactionBuilder(account, {
-      //   fee: BASE_FEE,
-      //   networkPassphrase: Networks.TESTNET,
-      //   memo: Memo.none(),
-      // })
-      //   .addOperation(
-      //     Operation.payment({
-      //       destination: businessId,
-      //       asset: Asset.native(),
-      //       amount: "1000", // 1 USD eşdeğeri gibi.
-      //     })
-      //   )
-      //   .setTimeout(60)
-      //   .build();
-
-      // const { signedTxXdr: signedPaymentXdr } = await signTransaction(paymentTx.toXDR(), {
-      //   networkPassphrase: Networks.TESTNET,
-      // });
-      // const signedPaymentTx = TransactionBuilder.fromXDR(signedPaymentXdr, Networks.TESTNET);
-
-      // const paymentResult = await server.sendTransaction(signedPaymentTx);
-      // console.log('DEBUG: paymentResult:', paymentResult);
 
       // 2. KONTRAT ÇAĞRISI TRANSAKSIYONU
       const contractTx = new TransactionBuilder(account, {
@@ -184,28 +160,33 @@ export default function PaymentSection({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">Rezervasyon Onayı</h2>
-        <p className="text-gray-600">
-          Rezervasyonunuzu onaylamak için cüzdanınızla giriş yapın ve onaylayın.
-          Bu işlem rezervasyonunuzu onaylayacaktır.
+    <div className="flex justify-center items-center min-h-[320px]">
+      <div className="bg-gray-800 rounded-xl p-6 shadow-lg max-w-md w-full flex flex-col gap-5">
+        <h2 className="text-2xl font-bold text-white mb-1 text-center">Rezervasyon Onayı</h2>
+        <p className="text-gray-200 text-base mb-2 text-center">
+          Rezervasyonunuzu onaylamak için cüzdanınızla giriş yapın ve <span className="font-semibold text-white">onayla</span> butonuna tıklayın.<br/>
+          <span className="text-white font-medium">Bu işlem rezervasyonunuzu onaylayacak ve ödeme işlemini başlatacaktır.</span>
         </p>
+        <ul className="list-disc pl-5 text-gray-300 text-sm mb-2 mx-auto text-left max-w-xs">
+          <li>Cüzdanınızda yeterli bakiye olduğundan emin olun.</li>
+          <li>İşlem sırasında cüzdanınızdan onay vermeniz istenecektir.</li>
+        </ul>
+        {error && (
+          <div className="bg-red-900 border border-red-500 text-white font-semibold p-4 rounded-md shadow flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {error}
+          </div>
+        )}
+        <Button
+          onClick={handleConfirm}
+          disabled={loading}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-md text-lg shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? 'İşlem Yapılıyor...' : 'Rezervasyonu Onayla'}
+        </Button>
       </div>
-
-      {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg">
-          {error}
-        </div>
-      )}
-
-      <Button
-        onClick={handleConfirm}
-        disabled={loading}
-        className="w-full"
-      >
-        {loading ? 'İşlem Yapılıyor...' : 'Rezervasyonu Onayla'}
-      </Button>
     </div>
   );
 } 
