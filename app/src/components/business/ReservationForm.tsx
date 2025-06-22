@@ -237,73 +237,97 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-3">
       {error && (
-        <div className="bg-red-900 text-white p-4 rounded-md">
+        <div className="bg-red-900 text-white p-3 rounded-md text-sm">
           <p>{error}</p>
         </div>
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-300">Müşteri Adı</label>
+        <label className="block text-sm font-medium text-gray-300 mb-1">Müşteri Adı</label>
         <input
           type="text"
           value={formData.customerName}
           onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-          className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
+          className="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm py-2 px-3"
           required
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300">Müşteri Telefonu</label>
+        <label className="block text-sm font-medium text-gray-300 mb-1">Müşteri Telefonu</label>
         <input
           type="tel"
           value={formData.customerPhone}
           onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
-          className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
+          className="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm py-2 px-3"
           required
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-300">Tarih</label>
-        <input
-          type="date"
-          value={formData.date}
-          onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-          className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
-          required
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Tarih</label>
+          <input
+            type="date"
+            value={formData.date}
+            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+            className="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm py-2 px-3"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Saat</label>
+          <input
+            type="time"
+            value={formData.time}
+            onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+            className="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm py-2 px-3"
+            required
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Kişi Sayısı</label>
+          <input
+            type="number"
+            min={1}
+            value={formData.partySize}
+            onChange={(e) => setFormData({ ...formData, partySize: Number(e.target.value) })}
+            className="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm py-2 px-3"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Müşteri ID</label>
+          <input
+            type="text"
+            value={formData.customerId}
+            onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
+            className="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm py-2 px-3"
+            placeholder="Opsiyonel"
+          />
+        </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300">Saat</label>
-        <input
-          type="time"
-          value={formData.time}
-          onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-          className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-300">Kişi Sayısı</label>
-        <input
-          type="number"
-          min={1}
-          value={formData.partySize}
-          onChange={(e) => setFormData({ ...formData, partySize: Number(e.target.value) })}
-          className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
-          required
+        <label className="block text-sm font-medium text-gray-300 mb-1">Notlar</label>
+        <textarea
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          className="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm py-2 px-3 resize-none"
+          rows={3}
+          placeholder="Rezervasyon hakkında özel notlar..."
         />
       </div>
 
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
+        className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
       >
         {loading ? 'Rezervasyon Oluşturuluyor...' : 'Rezervasyon Oluştur'}
       </button>

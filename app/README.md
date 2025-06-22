@@ -37,6 +37,30 @@ MONGODB_URI=your_mongodb_uri
 STELLAR_NETWORK=testnet
 ```
 
+## Contract Initialization
+
+To initialize the smart contract (required for loyalty token functionality), follow these steps:
+
+1. **Open Browser Developer Tools:**
+   - Press `F12` or right-click and select "Inspect"
+   - Go to the "Console" tab
+
+2. **Navigate to Business Dashboard:**
+   - Go to `http://localhost:3000/business-dashboard`
+
+3. **Initialize Contract:**
+   - In the console, simply run:
+   ```javascript
+   initializeReserveLContract()
+   ```
+
+4. **Check Results:**
+   - The function will show success/error messages in the console
+   - A popup will also display the transaction hash if successful
+   - You can view the transaction on Stellar Expert using the provided link
+
+**Note:** Contract initialization is only needed once per deployment. After initialization, the loyalty token system will work automatically for all reservations.
+
 ## Learn More
 
 To learn more about the technologies used in this project:

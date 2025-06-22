@@ -5,6 +5,39 @@ import Button from '../ui/Button';
 import { formatDate, formatTime } from '@/lib/utils';
 import { updateReservationStatusOnContract, initializeContract } from '@/contracts/contractActions';
 
+// Global fonksiyon olarak window objesine ekle
+declare global {
+  interface Window {
+    initializeReserveLContract: () => Promise<void>;
+  }
+}
+
+// Global fonksiyonu tanımla
+if (typeof window !== 'undefined') {
+  window.initializeReserveLContract = async () => {
+    console.log('🔍 initializeReserveLContract başladı');
+    
+    // Statik loyalty token ID kullanılıyor
+    // Bu token testnet'te oluşturulmuş örnek sadakat token'ıdır
+    const loyaltyTokenId = 'CCCW5YEWDTTKEA3P3TUX3FMBSV4IPG33IEJAEEFLXGV2HMD2GUINUH44';
+    
+    try {
+      const result = await initializeContract(loyaltyTokenId);
+      console.log('🔍 initializeContract sonucu:', result);
+      
+      if (result.success) {
+        console.log('✅ Kontrat başarıyla initialize edildi!');
+        console.log('Transaction Hash:', result.hash);
+        console.log('Stellar Expert\'te görüntülemek için:', `https://stellar.expert/explorer/testnet/tx/${result.hash}`);
+      } else {
+        console.error('❌ Kontrat initialize hatası:', result.error);
+      }
+    } catch (error) {
+      console.error('❌ initializeReserveLContract hatası:', error);
+    }
+  };
+}
+
 interface Reservation {
   reservationId: string;
   customerName: string;
@@ -31,7 +64,8 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [updatingContract, setUpdatingContract] = useState<string | null>(null);
-  const [initializingContract, setInitializingContract] = useState(false);
+  const [editingNotes, setEditingNotes] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState('');
 
   const fetchReservations = async () => {
     try {
@@ -167,7 +201,6 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
       console.log('✅ Kontrat güncelleme başarılı!');
       if (newStatus === 'Completed') {
         console.log('🔍 Alert gösteriliyor...');
-        alert(`✅ Sadakat token'ı başarıyla müşteri cüzdanına gönderildi!\n\nTransaction Hash: ${result.hash}\n\nStellar Expert'te görüntülemek için: https://stellar.expert/explorer/testnet/tx/${result.hash}`);
       }
       console.log('🔍 Rezervasyonlar yenileniyor...');
       await fetchReservations();
@@ -226,33 +259,42 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
     }
   };
 
-  const handleInitializeContract = async () => {
-    console.log('🔍 handleInitializeContract başladı');
-    
-    // Statik loyalty token ID kullanılıyor
-    // Bu token testnet'te oluşturulmuş örnek sadakat token'ıdır
-    const loyaltyTokenId = 'CCLWOTOK72Z5QOJJWHGCUCBWHHEA2MPP35CYW4QXXWRCYSZ5F7NMANRJ';
-    
-    setInitializingContract(true);
-    setError(null);
-    
+  const updateReservationNotes = async (reservationId: string, notes: string) => {
     try {
-      const result = await initializeContract(loyaltyTokenId);
-      console.log('🔍 initializeContract sonucu:', result);
-      
-      if (result.success) {
-        console.log('✅ Kontrat başarıyla initialize edildi!');
-        alert(`✅ Kontrat başarıyla initialize edildi!\n\nTransaction Hash: ${result.hash}\n\nStellar Expert'te görüntülemek için: https://stellar.expert/explorer/testnet/tx/${result.hash}`);
-      } else {
-        console.error('❌ Kontrat initialize hatası:', result.error);
-        setError(`Kontrat initialize edilirken hata: ${result.error}`);
+      setError(null);
+      const response = await fetch(`/api/reservations?id=${reservationId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ notes }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Not güncellenirken bir hata oluştu');
       }
+
+      await fetchReservations();
+      setEditingNotes(null);
+      setNoteText('');
     } catch (error) {
-      console.error('❌ handleInitializeContract hatası:', error);
-      setError('Kontrat initialize edilirken bir hata oluştu. Lütfen tekrar deneyin.');
-    } finally {
-      setInitializingContract(false);
+      console.error('Error updating notes:', error);
+      setError('Not güncellenirken bir hata oluştu. Lütfen tekrar deneyin.');
     }
+  };
+
+  const handleEditNotes = (reservation: Reservation) => {
+    setEditingNotes(reservation.reservationId);
+    setNoteText(reservation.notes || '');
+  };
+
+  const handleSaveNotes = (reservationId: string) => {
+    updateReservationNotes(reservationId, noteText);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingNotes(null);
+    setNoteText('');
   };
 
   if (isLoading) {
@@ -283,54 +325,220 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
   }
 
   return (
-    <div className="space-y-4">
-      {/* Initialize Contract Button */}
-      <div className="flex justify-end">
-        <Button
-          onClick={handleInitializeContract}
-          disabled={initializingContract}
-          className="bg-purple-600 hover:bg-purple-700 text-white"
-        >
-          {initializingContract ? 'Kontrat Initialize Ediliyor...' : 'Kontratı Initialize Et'}
-        </Button>
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h3 className="text-xl font-semibold text-white">Rezervasyonlar</h3>
+          <p className="text-sm text-gray-400 mt-1">
+            Toplam {reservations.length} rezervasyon
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+          <span className="text-sm text-gray-400">Canlı</span>
+        </div>
       </div>
-      
-      <div className="grid gap-4">
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-gradient-to-r from-blue-600/20 to-blue-800/20 border border-blue-500/30 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="p-2 bg-blue-500/20 rounded-lg">
+              <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-gray-400">Bekleyen</p>
+              <p className="text-xl font-semibold text-white">
+                {reservations.filter(r => r.confirmationStatus === 'pending').length}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-green-600/20 to-green-800/20 border border-green-500/30 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="p-2 bg-green-500/20 rounded-lg">
+              <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-gray-400">Onaylanan</p>
+              <p className="text-xl font-semibold text-white">
+                {reservations.filter(r => r.confirmationStatus === 'confirmed').length}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-purple-600/20 to-purple-800/20 border border-purple-500/30 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="p-2 bg-purple-500/20 rounded-lg">
+              <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-gray-400">Gelen</p>
+              <p className="text-xl font-semibold text-white">
+                {reservations.filter(r => r.attendanceStatus === 'arrived').length}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-orange-600/20 to-orange-800/20 border border-orange-500/30 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="p-2 bg-orange-500/20 rounded-lg">
+              <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-gray-400">Gelmedi</p>
+              <p className="text-xl font-semibold text-white">
+                {reservations.filter(r => r.attendanceStatus === 'no_show').length}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Reservations List */}
+      <div className="space-y-4">
         {reservations.map((reservation) => (
           <div
             key={reservation.reservationId}
-            className="p-4 bg-background-light border border-gray-700 rounded-lg space-y-2"
+            className="bg-gradient-to-r from-gray-800/50 to-gray-900/50 border border-gray-700/50 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-gray-600/50"
           >
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-medium text-white">{reservation.customerName || 'Müşteri Adı'}</h3>
-                <p className="text-sm text-gray-400">{reservation.customerPhone || 'Telefon'}</p>
-                {reservation.notes && (
-                  <p className="text-sm text-gray-300 mt-1 italic">"{reservation.notes}"</p>
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <span className="text-white font-semibold text-sm">
+                      {reservation.customerName?.charAt(0)?.toUpperCase() || 'M'}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white text-lg">{reservation.customerName || 'Müşteri Adı'}</h3>
+                    <p className="text-sm text-gray-400 flex items-center">
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      {reservation.customerPhone || 'Telefon'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Notes Section */}
+                {editingNotes === reservation.reservationId ? (
+                  <div className="mt-3 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+                    <p className="text-sm text-blue-300 font-medium mb-2">📝 Not:</p>
+                    <textarea
+                      value={noteText}
+                      onChange={(e) => setNoteText(e.target.value)}
+                      className="w-full p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg text-white text-sm resize-none"
+                      rows={3}
+                      placeholder="Not ekleyin..."
+                    />
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-green-500 text-green-500 hover:bg-green-500/10 text-xs"
+                        onClick={() => handleSaveNotes(reservation.reservationId)}
+                      >
+                        Kaydet
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-red-500 text-red-500 hover:bg-red-500/10 text-xs"
+                        onClick={handleCancelEdit}
+                      >
+                        İptal
+                      </Button>
+                    </div>
+                  </div>
+                ) : reservation.notes ? (
+                  <div className="mt-3 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <p className="text-sm text-blue-300 font-medium mb-1">📝 Not:</p>
+                        <p className="text-sm text-blue-200 italic">"{reservation.notes}"</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-blue-500 text-blue-500 hover:bg-blue-500/10 text-xs ml-2"
+                        onClick={() => handleEditNotes(reservation)}
+                      >
+                        Düzenle
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-blue-500 text-blue-500 hover:bg-blue-500/10 text-xs"
+                      onClick={() => handleEditNotes(reservation)}
+                    >
+                      + Not Ekle
+                    </Button>
+                  </div>
                 )}
               </div>
-              <div className="text-right">
-                <p className="text-sm text-white">
-                  {formatDate(reservation.date)} - {formatTime(reservation.time)}
-                </p>
-                <p className="text-sm text-gray-400">
-                  {reservation.numberOfPeople || 0} kişi
-                </p>
+
+              <div className="text-right ml-4">
+                <div className="flex items-center space-x-2 mb-2">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <p className="text-sm text-white font-medium">
+                    {formatDate(reservation.date)}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm text-white font-medium">
+                    {formatTime(reservation.time)}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <p className="text-sm text-gray-400">
+                    {reservation.numberOfPeople || 0} kişi
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="flex justify-between items-center">
-              <div className="space-x-2">
+
+            {/* Action Buttons and Status */}
+            <div className="flex justify-between items-center pt-4 border-t border-gray-700/50">
+              <div className="flex space-x-2">
                 {reservation.confirmationStatus === 'pending' && (
                   <>
                     <Button
                       size="sm"
                       variant={reservation.attendanceStatus === 'arrived' ? 'primary' : 'outline'}
                       className={reservation.attendanceStatus === 'arrived'
-                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                        ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg'
                         : 'border-green-500 text-green-500 hover:bg-green-500/10'
                       }
                       onClick={() => updateAttendanceStatus(reservation.reservationId, 'arrived', reservation.blockchainReservationId)}
                     >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
                       Geldi
                     </Button>
                     <Button
@@ -339,17 +547,23 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
                       className="border-orange-500 text-orange-500 hover:bg-orange-500/10"
                       onClick={() => updateAttendanceStatus(reservation.reservationId, 'no_show', reservation.blockchainReservationId)}
                     >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                       Gelmedi
                     </Button>
                     <Button
                       size="sm"
                       variant={reservation.attendanceStatus === 'not_arrived' ? 'primary' : 'outline'}
                       className={reservation.attendanceStatus === 'not_arrived'
-                        ? 'bg-red-600 hover:bg-red-700 text-white'
+                        ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg'
                         : 'border-red-500 text-red-500 hover:bg-red-500/10'
                       }
                       onClick={() => updateAttendanceStatus(reservation.reservationId, 'not_arrived')}
                     >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                       İptal Et
                     </Button>
                   </>
@@ -360,24 +574,30 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
                       size="sm"
                       variant={reservation.attendanceStatus === 'arrived' ? 'primary' : 'outline'}
                       className={reservation.attendanceStatus === 'arrived' 
-                        ? 'bg-green-600 hover:bg-green-700 text-white' 
+                        ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg' 
                         : 'border-green-500 text-green-500 hover:bg-green-500/10'
                       }
                       onClick={() => updateAttendanceStatus(reservation.reservationId, 'arrived', reservation.blockchainReservationId)}
                       disabled={reservation.attendanceStatus === 'arrived' || updatingContract === reservation.reservationId}
                     >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
                       {updatingContract === reservation.reservationId ? 'Token Veriliyor...' : 'Geldi'}
                     </Button>
                     <Button
                       size="sm"
                       variant={reservation.attendanceStatus === 'no_show' ? 'primary' : 'outline'}
                       className={reservation.attendanceStatus === 'no_show' 
-                        ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+                        ? 'bg-orange-600 hover:bg-orange-700 text-white shadow-lg' 
                         : 'border-orange-500 text-orange-500 hover:bg-orange-500/10'
                       }
                       onClick={() => updateAttendanceStatus(reservation.reservationId, 'no_show', reservation.blockchainReservationId)}
                       disabled={reservation.attendanceStatus === 'no_show'}
                     >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                       Gelmedi
                     </Button>
                     <Button
@@ -386,24 +606,39 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
                       className="border-red-600 text-red-600 hover:bg-red-600/20 hover:border-red-500 hover:text-red-500 bg-red-600/10"
                       onClick={() => cancelConfirmedReservation(reservation.reservationId)}
                     >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                       İptal Et
                     </Button>
                   </>
                 )}
               </div>
-              <div className="text-sm space-y-1">
+              
+              <div className="flex flex-col items-end space-y-2">
                 {/* Confirmation Status */}
-                <span className={`inline-block px-2 py-1 rounded ${
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
                   reservation.confirmationStatus === 'confirmed' && reservation.status === 'cancelled'
-                    ? 'bg-orange-500/20 text-orange-400'
+                    ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
                     : reservation.confirmationStatus === 'confirmed'
-                    ? 'bg-green-500/20 text-green-400'
+                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
                     : reservation.confirmationStatus === 'cancelled'
-                    ? 'bg-orange-500/20 text-orange-400'
+                    ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
                     : reservation.confirmationStatus === 'pending'
-                    ? 'bg-yellow-500/20 text-yellow-400'
-                    : 'bg-yellow-500/20 text-yellow-400'
+                    ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                    : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
                 }`}>
+                  <div className={`w-2 h-2 rounded-full mr-2 ${
+                    reservation.confirmationStatus === 'confirmed' && reservation.status === 'cancelled'
+                      ? 'bg-orange-400'
+                      : reservation.confirmationStatus === 'confirmed'
+                      ? 'bg-green-400'
+                      : reservation.confirmationStatus === 'cancelled'
+                      ? 'bg-orange-400'
+                      : reservation.confirmationStatus === 'pending'
+                      ? 'bg-yellow-400'
+                      : 'bg-yellow-400'
+                  }`}></div>
                   {reservation.confirmationStatus === 'confirmed' && reservation.status === 'cancelled'
                     ? 'Onaylı-İptal'
                     : reservation.confirmationStatus === 'confirmed'
@@ -417,11 +652,14 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
                 
                 {/* Loyalty Token Status */}
                 {reservation.attendanceStatus === 'arrived' && (
-                  <span className={`inline-block px-2 py-1 rounded text-xs ${
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
                     reservation.loyaltyTokensSent
-                      ? 'bg-purple-500/20 text-purple-400'
-                      : 'bg-blue-500/20 text-blue-400'
+                      ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                      : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                   }`}>
+                    <div className={`w-2 h-2 rounded-full mr-2 ${
+                      reservation.loyaltyTokensSent ? 'bg-purple-400' : 'bg-blue-400'
+                    }`}></div>
                     {reservation.loyaltyTokensSent ? '🎁 Token Verildi' : '⏳ Token Bekliyor'}
                   </span>
                 )}
