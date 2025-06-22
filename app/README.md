@@ -67,4 +67,8 @@ To learn more about the technologies used in this project:
 
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Stellar Documentation](https://developers.stellar.org/docs)
-- [Soroban Documentation](https://soroban.stellar.org/docs) 
+- [Soroban Documentation](https://soroban.stellar.org/docs)
+
+## Canlı Demo
+
+[https://reserve-l.vercel.app](https://reserve-l.vercel.app) 
