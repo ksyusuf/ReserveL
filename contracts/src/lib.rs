@@ -1,7 +1,7 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contractimpl, contracttype, token, Address, Env, Map, Symbol,
+    contract, contractimpl, contracttype, token, Address, Env, Map, Symbol, log,
 };
 
 #[contracttype]
@@ -42,6 +42,28 @@ impl ReserveLContract {
 
         env.storage().instance().set(&owner_key, &owner);
         env.storage().instance().set(&loyalty_key, &loyalty_token_id);
+    }
+
+    pub fn create_loyalty_token(env: Env, business_id: Address, amount: i128) {
+        // Admin olarak business_id'nin yetkili olduğundan emin olalım
+        let owner_key = Symbol::new(&env, "owner");
+        let admin_address: Address = env.storage().instance().get(&owner_key).expect(" Admin not set");
+
+        if business_id != admin_address {
+            panic!(" Only the admin (business owner) can create loyalty tokens.");
+        }
+
+        // Sadakat token'larını yaratmak için token_id'yi alalım
+        let loyalty_key = Symbol::new(&env, "loyalty");
+        let loyalty_token_id: Address = env.storage().instance().get(&loyalty_key).expect(" Loyalty token not set");
+        
+        // Token client'ını oluşturalım
+        let loyalty_client = token::Client::new(&env, &loyalty_token_id);
+
+        // Belirtilen miktarda loyalty token'ı admin adresinden transfer edelim
+        loyalty_client.transfer(&business_id, &business_id, &amount);
+
+        log!(&env, " Successfully created {} loyalty tokens for business_id {}", amount, business_id);
     }
 
     pub fn create_reservation(
@@ -125,7 +147,7 @@ impl ReserveLContract {
         env.storage().persistent().set(&reserves_key, &reservations);
     }
 
-    pub fn update_reservation_status(env: Env, reservation_id: u64, new_status: ReservationStatus) {
+    pub fn update_reservation_status(env: Env, reservation_id: u64, new_status_str: Symbol) {
         let reserves_key = Symbol::new(&env, "reserves");
         let mut reservations: Map<u64, Reservation> = env
             .storage()
@@ -133,9 +155,15 @@ impl ReserveLContract {
             .get(&reserves_key)
             .unwrap_or(Map::new(&env));
 
-        let mut reservation = reservations.get(reservation_id).expect("Reservation not found");
+        let mut reservation = reservations.get(reservation_id).expect(" Reservation with ID not found");
 
-        reservation.business_id.require_auth();
+
+        // String değerini enum'a çevir
+        let new_status = match new_status_str {
+            s if s == Symbol::new(&env, "Completed") => ReservationStatus::Completed,
+            s if s == Symbol::new(&env, "NoShow") => ReservationStatus::NoShow,
+            _ => panic!("Invalid status: "),
+        };
 
         if reservation.status != ReservationStatus::Confirmed {
             panic!("Cannot update status for a non-confirmed reservation");
@@ -145,26 +173,40 @@ impl ReserveLContract {
             ReservationStatus::Completed => {
                 if !reservation.loyalty_issued {
                     let loyalty_key = Symbol::new(&env, "loyalty");
-                    let loyalty_token_id: Address = env.storage().instance().get(&loyalty_key).expect("Loyalty token not set");
+                    let loyalty_token_id: Address = env.storage().instance().get(&loyalty_key).expect(" Loyalty token not set");
+
+                    // Token client'ını oluştur
                     let loyalty_client = token::Client::new(&env, &loyalty_token_id);
-                    let loyalty_amount: i128 = 100 * 10i128.pow(7);
+
+                    // Miktar belirle
+                    let loyalty_amount: i128 = 100 * 10i128.pow(7); // 100 token
 
                     let business = reservation.business_id.clone();
                     business.require_auth();
 
-                    let customer = reservation.customer_id.clone().expect("Customer not assigned");
-                    loyalty_client.transfer(&business, &customer, &loyalty_amount);
+                    // Müşteri adresini kontrol et
+                    let customer = reservation.customer_id.clone();
 
+                    let customer = customer.unwrap();
+
+                    // Sadakat token'larını müşteriye aktar
+                    loyalty_client.transfer(&business, &customer, &loyalty_amount);
                     reservation.loyalty_issued = true;
                 }
-                reservation.status = new_status;
+
+                reservation.status = new_status.clone();
             }
             ReservationStatus::NoShow => {
-                reservation.status = new_status;
+                log!(&env, "🔍 Marking reservation ID {} as 'NoShow'.", reservation_id);
+                reservation.status = new_status.clone();
             }
-            _ => panic!("Invalid status update"),
+            _ => {
+                log!(&env, " Invalid status update for reservation ID {}. The status must be either 'Completed' or 'NoShow'.", reservation_id);
+                panic!(" Invalid status update for reservation ID {}. The status must be either 'Completed' or 'NoShow'.", reservation_id);
+            }
         }
 
+        // Rezervasyonu güncelle
         reservations.set(reservation_id, reservation);
         env.storage().persistent().set(&reserves_key, &reservations);
     }

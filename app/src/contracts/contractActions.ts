@@ -42,14 +42,33 @@ export async function updateReservationStatusOnContract(reservationId: string, n
       .build();
     
     console.log('🔍 Transaction oluşturuldu, imzalanıyor...');
-    const { signedTxXdr } = await signTransaction(tx.toXDR(), {
+
+    console.log('tx.toxdr ', tx.toXDR());
+
+    
+    const simResult = await server.simulateTransaction(tx); // geçici olarak any
+    console.log('Simülasyon sonucu:', simResult);
+
+    
+
+    const assembledTx = rpc.assembleTransaction(tx, simResult);
+
+    const xdr = assembledTx.build().toXDR();
+
+    const { signedTxXdr } = await signTransaction(xdr, {
       networkPassphrase: Networks.TESTNET,
     });
     const signedTx = TransactionBuilder.fromXDR(signedTxXdr, Networks.TESTNET);
+
+    console.log("singedTx: ", signedTx);
     
     console.log('🔍 Transaction gönderiliyor...');
+
     const txResponse = await server.sendTransaction(signedTx);
-    console.log('🔍 Transaction başarılı:', txResponse.hash);
+
+    const anyone = await server.pollTransaction(txResponse.hash);
+
+    console.log('🔍 Transaction başarılı:', anyone);
     
     return { success: true, hash: txResponse.hash };
   } catch (error) {

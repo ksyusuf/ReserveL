@@ -86,29 +86,29 @@ export default function PaymentSection({
       // 3. Transaction oluştur
       console.log('DEBUG: nativeToScVal input:', reservationId);
 
-      // 1. ÖDEME TRANSAKSIYONU
-      const paymentTx = new TransactionBuilder(account, {
-        fee: BASE_FEE,
-        networkPassphrase: Networks.TESTNET,
-        memo: Memo.none(),
-      })
-        .addOperation(
-          Operation.payment({
-            destination: businessId,
-            asset: Asset.native(),
-            amount: "1000", // 1 USD eşdeğeri gibi.
-          })
-        )
-        .setTimeout(60)
-        .build();
+      // // 1. ÖDEME TRANSAKSIYONU
+      // const paymentTx = new TransactionBuilder(account, {
+      //   fee: BASE_FEE,
+      //   networkPassphrase: Networks.TESTNET,
+      //   memo: Memo.none(),
+      // })
+      //   .addOperation(
+      //     Operation.payment({
+      //       destination: businessId,
+      //       asset: Asset.native(),
+      //       amount: "1000", // 1 USD eşdeğeri gibi.
+      //     })
+      //   )
+      //   .setTimeout(60)
+      //   .build();
 
-      const { signedTxXdr: signedPaymentXdr } = await signTransaction(paymentTx.toXDR(), {
-        networkPassphrase: Networks.TESTNET,
-      });
-      const signedPaymentTx = TransactionBuilder.fromXDR(signedPaymentXdr, Networks.TESTNET);
+      // const { signedTxXdr: signedPaymentXdr } = await signTransaction(paymentTx.toXDR(), {
+      //   networkPassphrase: Networks.TESTNET,
+      // });
+      // const signedPaymentTx = TransactionBuilder.fromXDR(signedPaymentXdr, Networks.TESTNET);
 
-      const paymentResult = await server.sendTransaction(signedPaymentTx);
-      console.log('DEBUG: paymentResult:', paymentResult);
+      // const paymentResult = await server.sendTransaction(signedPaymentTx);
+      // console.log('DEBUG: paymentResult:', paymentResult);
 
       // 2. KONTRAT ÇAĞRISI TRANSAKSIYONU
       const contractTx = new TransactionBuilder(account, {

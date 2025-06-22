@@ -36,7 +36,6 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
   const fetchReservations = async () => {
     try {
       setError(null);
-      console.log('Fetching reservations...'); // Debug için
       
       const response = await fetch('/api/reservations');
       const data = await response.json();
@@ -45,7 +44,6 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
         throw new Error(data.error || 'Rezervasyonlar yüklenirken bir hata oluştu');
       }
       
-      console.log('Fetched reservations:', data); // Debug için
       setReservations(data);
       setRetryCount(0); // Başarılı olursa retry sayacını sıfırla
     } catch (error) {

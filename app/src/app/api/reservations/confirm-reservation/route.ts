@@ -68,6 +68,7 @@ export async function POST(request: Request) {
           confirmationStatus: 'confirmed',
           attendanceStatus: 'not_arrived',
           status: 'confirmed',
+          customerId: customerAddress,
           customerAddress: customerAddress,
           transactionHash: transactionHash,
           updatedAt: new Date()
