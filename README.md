@@ -3,9 +3,9 @@
 This is the frontend/backend application for the ReserveL project, built with Next.js 14 ~ Stellar.
 
 
-## Canlı Demo --> [https://reserve-l.vercel.app](https://reserve-l.vercel.app) 
+## Live Demo --> [https://reserve-l.vercel.app](https://reserve-l.vercel.app) 
 
-## Demo Video --> [Demo Video](https://docs.google.com/presentation/d/1jVmmhu-9s1BxH5Lb9E-g_E329t31vDygHdGbeKyrVuo/edit?slide=id.g36a2476a8a5_0_2234#slide=id.g36a2476a8a5_0_2234)
+## Presentation --> [Presentation](https://docs.google.com/presentation/d/1jVmmhu-9s1BxH5Lb9E-g_E329t31vDygHdGbeKyrVuo/edit?slide=id.g36a2476a8a5_0_1680#slide=id.g36a2476a8a5_0_1680)
 
 ## Getting Started
 
