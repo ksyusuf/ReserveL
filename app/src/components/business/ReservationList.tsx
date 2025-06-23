@@ -70,7 +70,7 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
 
   // Yoruma özel URL oluşturucu
   const getApprovalUrl = useCallback((reservationId: string) => {
-    return `http://localhost:3000/customer-page?reservationId=${reservationId}`;
+    return `https://reserve-l.vercel.app/customer-page?reservationId=${reservationId}`;
   }, []);
 
   // Panoya kopyalama fonksiyonu
