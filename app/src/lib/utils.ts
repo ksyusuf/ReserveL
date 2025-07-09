@@ -115,9 +115,9 @@ export async function autoNoShowCheck(reservationsOrOne: any | any[]): Promise<s
   const updatedIds: string[] = [];
 
   for (const reservation of reservations) {
-    // Sadece pending ve not_arrived olanlar kontrol edilir
+    // pending veya confirmed olup gelmeyen rezervasyonlar için no_show kontrolü yapılır
     if (
-      reservation.confirmationStatus === 'pending' &&
+      (reservation.confirmationStatus === 'pending' || reservation.confirmationStatus === 'confirmed') &&
       reservation.attendanceStatus === 'not_arrived'
     ) {
       // Tarih ve saat birleştir
