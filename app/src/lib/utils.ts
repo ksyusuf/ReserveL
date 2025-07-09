@@ -100,3 +100,53 @@ export const calculateLoyaltyTokens = (amount: number): number => {
 export const sleep = (ms: number): Promise<void> => {
   return new Promise(resolve => setTimeout(resolve, ms));
 }; 
+
+/**
+ * Rezervasyon(lar) için otomatik no_show kontrolü yapar.
+ * - Eğer rezervasyon saatinden 30 dakika geçmişse ve hala pending/not_arrived ise,
+ *   ilgili rezervasyonu no_show olarak işaretler.
+ * - Hem tekil rezervasyon hem de rezervasyon listesi ile çalışır.
+ * - Güncellenen rezervasyon id'lerini döndürür.
+ * - Yorum ve log satırlarını silme!
+ */
+export async function autoNoShowCheck(reservationsOrOne: any | any[]): Promise<string[]> {
+  const now = new Date();
+  const reservations = Array.isArray(reservationsOrOne) ? reservationsOrOne : [reservationsOrOne];
+  const updatedIds: string[] = [];
+
+  for (const reservation of reservations) {
+    // pending veya confirmed olup gelmeyen rezervasyonlar için no_show kontrolü yapılır
+    if (
+      (reservation.confirmationStatus === 'pending' || reservation.confirmationStatus === 'confirmed') &&
+      reservation.attendanceStatus === 'not_arrived'
+    ) {
+      // Tarih ve saat birleştir
+      const dateTimeStr = `${reservation.date}T${reservation.time}:00`;
+      const reservationDate = new Date(dateTimeStr);
+      // 30 dakika geçti mi?
+      if (
+        !isNaN(reservationDate.getTime()) &&
+        now.getTime() > reservationDate.getTime() + 30 * 60 * 1000
+      ) {
+        console.log('🔍 [autoNoShowCheck] Rezervasyon no_show kontrolü başlatıldı:', reservation.reservationId);
+        try {
+          const response = await fetch('/api/reservations/update-attendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reservationId: reservation.reservationId, attendanceStatus: 'no_show' }),
+          });
+          if (response.ok) {
+            updatedIds.push(reservation.reservationId);
+            console.log('✅ [autoNoShowCheck] Rezervasyon no_show olarak işaretlendi:', reservation.reservationId);
+          } else {
+            const errorData = await response.json();
+            console.error('❌ [autoNoShowCheck] no_show güncelleme hatası:', errorData.error);
+          }
+        } catch (err) {
+          console.error('❌ [autoNoShowCheck] API çağrısı sırasında hata:', err);
+        }
+      }
+    }
+  }
+  return updatedIds;
+} 

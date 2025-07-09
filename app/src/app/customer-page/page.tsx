@@ -17,6 +17,7 @@ import {
 } from '@stellar/stellar-sdk';
 import { requestAccess } from '@stellar/freighter-api';
 import { Suspense } from 'react';
+import { autoNoShowCheck } from '@/lib/utils';
 
 const CONTRACT_ID = process.env.NEXT_PUBLIC_CONTRACT_ID!;
 const SOROBAN_RPC_URL = 'https://soroban-testnet.stellar.org';
@@ -144,8 +145,9 @@ function CustomerPage() {
   const fetchReservationStatus = async (id: string) => {
     try {
       const response = await fetch(`/api/reservations/${id}`);
+      let data;
       if (response.ok) {
-        const data = await response.json();
+        data = await response.json();
         console.log('API\'den gelen rezervasyon verisi:', data);
         setReservationStatus(data.reservation);
       } else {
@@ -170,6 +172,20 @@ function CustomerPage() {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         });
+      }
+      // Otomatik no_show kontrolü (global fonksiyon ile)
+      if (data && data.reservation) {
+        const updatedIds = await autoNoShowCheck(data.reservation);
+        if (updatedIds.length > 0) {
+          setLoading(true);
+          // Güncel veriyi tekrar çek
+          const updatedResponse = await fetch(`/api/reservations/${id}`);
+          if (updatedResponse.ok) {
+            const updatedData = await updatedResponse.json();
+            setReservationStatus(updatedData.reservation);
+          }
+          setLoading(false);
+        }
       }
     } catch (error) {
       console.warn('Rezervasyon durumu alınırken hata:', error);
