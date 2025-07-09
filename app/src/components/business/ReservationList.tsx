@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Button from '../ui/Button';
-import { formatDate, formatTime } from '@/lib/utils';
+import { formatDate, formatTime, autoNoShowCheck } from '@/lib/utils';
 import { updateReservationStatusOnContract, initializeContract } from '@/contracts/contractActions';
 
 // Global fonksiyon olarak window objesine ekle
@@ -67,6 +67,8 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  // Yeni: Otomatik attendance güncellenen rezervasyonlar için state
+  const [autoUpdatingAttendance, setAutoUpdatingAttendance] = useState<string | null>(null);
 
   // Yoruma özel URL oluşturucu
   const getApprovalUrl = useCallback((reservationId: string) => {
@@ -94,6 +96,16 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
       
       setReservations(data);
       setRetryCount(0); // Başarılı olursa retry sayacını sıfırla
+      // Otomatik no_show kontrolü (global fonksiyon ile)
+      setTimeout(async () => {
+        const updatedIds = await autoNoShowCheck(data);
+        if (updatedIds.length > 0) {
+          // Spinner state'i güncelle
+          setAutoUpdatingAttendance(updatedIds[0]); // Aynı anda birden fazla için ilkini göster
+          await fetchReservations();
+          setAutoUpdatingAttendance(null);
+        }
+      }, 0);
     } catch (error) {
       console.error('Error fetching reservations:', error);
       setError(error instanceof Error ? error.message : 'Rezervasyonlar yüklenirken bir hata oluştu');
@@ -572,6 +584,7 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
                         : 'border-green-500 text-green-500 hover:bg-green-500/10'
                       }
                       onClick={() => updateAttendanceStatus(reservation.reservationId, 'arrived', reservation.blockchainReservationId)}
+                      isLoading={autoUpdatingAttendance === reservation.reservationId && false} // Sadece no_show için spinner
                     >
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -583,6 +596,7 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
                       variant="outline"
                       className="border-orange-500 text-orange-500 hover:bg-orange-500/10"
                       onClick={() => updateAttendanceStatus(reservation.reservationId, 'no_show', reservation.blockchainReservationId)}
+                      isLoading={autoUpdatingAttendance === reservation.reservationId}
                     >
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -597,6 +611,7 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
                         : 'border-red-500 text-red-500 hover:bg-red-500/10'
                       }
                       onClick={() => updateAttendanceStatus(reservation.reservationId, 'not_arrived')}
+                      isLoading={false}
                     >
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
