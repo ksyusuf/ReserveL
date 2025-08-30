@@ -1,10 +1,10 @@
 [package]
 name = "reservel-contract"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-soroban-sdk = "=22.0.4"  # Rust 1.81 uyumlu SDK sürümü
+soroban-sdk = "=22.0.8"

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { autoNoShowCheck } from '@/lib/utils';
-import { updateReservationStatusOnContract, initializeContract } from '@/contracts/contractActions';
+import { updateReservationStatusOnContract } from '@/contracts/contractActions';
 import { Reservation } from '@/types/Reservation';
 
 export default function useReservations({ onReservationCreated, lastCreatedReservationId }: any) {

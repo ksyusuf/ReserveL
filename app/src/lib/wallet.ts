@@ -15,23 +15,37 @@ export async function checkWalletConnection() {
   }
 }
 
-export async function connectWallet() {
+export async function connectWallet(): Promise<{ address: string }> {
   try {
     const connected = await isConnected();
     if (!connected) {
       throw new Error("Lütfen Freighter cüzdanını yükleyin!");
     }
+    
     const accessResult = await requestAccess();
-    const hasPermission = String(accessResult) === "true" ||
-      (typeof accessResult === "string" && /^G[A-Z2-7]{55}$/.test(accessResult));
-    if (!hasPermission) {
-      throw new Error("Cüzdan bağlantısı iptal edildi veya onay verilmedi.");
+    console.log("Access result:", accessResult);
+    
+    // requestAccess başarılı olduğunda { address: string } döndürür
+    if (accessResult && typeof accessResult === 'object' && 'address' in accessResult) {
+      console.log("Address from accessResult:", accessResult.address);
+      return { address: accessResult.address };
     }
-    const address = await getAddress();
-    if (!address) {
-      throw new Error("Cüzdan adresi alınamadı.");
+    
+    // Eski format kontrolü (string olarak döndürüyorsa)
+    if (typeof accessResult === 'string') {
+      if (accessResult === "true") {
+        const addressResult = await getAddress();
+        if (!addressResult || typeof addressResult !== 'string') {
+          throw new Error("Cüzdan adresi alınamadı.");
+        }
+        return { address: addressResult };
+      } else if (/^G[A-Z2-7]{55}$/.test(accessResult)) {
+        return { address: accessResult };
+      }
     }
-    return { address };
+    
+    console.log("Cüzdan bağlantısı iptal edildi veya onay verilmedi.", accessResult);
+    throw new Error("Cüzdan bağlantısı iptal edildi veya onay verilmedi.");
   } catch (error) {
     throw error;
   }

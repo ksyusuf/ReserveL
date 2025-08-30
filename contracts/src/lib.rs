@@ -1,8 +1,28 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contractimpl, contracttype, token, Address, Env, Map, Symbol, log,
+    contract,
+    contractimpl,
+    contracttype,
+    token,
+    Address,
+    Env,
+    Map,
+    Symbol,
+    log,
+    symbol_short,
+    contracterror
 };
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)] // PartialOrd ve Ord eklendi
+#[repr(u32)] // Bu nitelik eklendi
+pub enum ContractError {
+    AlreadyInitialized = 1001,
+    BusinessAlreadyRegistered = 1002,
+    BusinessNotFound = 1003,
+    Unauthorized = 1004
+}
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -27,6 +47,14 @@ pub struct Reservation {
     pub loyalty_issued: bool,
 }
 
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Business {
+    pub business_name: Symbol,
+    pub wallet_address: Address,
+    pub registration_time: u64,
+}
+
 #[contract]
 pub struct ReserveLContract;
 
@@ -37,7 +65,13 @@ impl ReserveLContract {
         let loyalty_key = Symbol::new(&env, "loyalty");
 
         if env.storage().instance().has(&owner_key) {
+            env.events().publish(
+                (symbol_short!("error"), symbol_short!("init_err")),
+                "Contract already initialized"
+            );
             panic!("Contract already initialized");
+            // panic içerisindeki mesaj client'a gönderilmez, cli ya da benzeri
+            // akışta gösterilir. client'a mesaj göndermek için yukarıdaki metodu uyguladım.
         }
 
         env.storage().instance().set(&owner_key, &owner);
@@ -229,5 +263,67 @@ impl ReserveLContract {
     pub fn get_owner(env: Env) -> Address {
         let owner_key = Symbol::new(&env, "owner");
         env.storage().instance().get(&owner_key).expect("Owner not set")
+    }
+
+    /// İşletme kayıt fonksiyonu
+    ///
+    /// İşletme adını ve cüzdan adresini alır, doğrular ve kaydeder.
+    /// Başarılı olursa kayıtlı işletmenin bilgilerini döndürür, aksi takdirde bir hata döndürür.
+    pub fn register_business(env: Env, business_name: Symbol, wallet_address: Address) -> Result<Business, ContractError> {
+        // Cüzdan sahibinin yetkisi olduğundan emin olalım
+        wallet_address.require_auth();
+
+        let businesses_key = Symbol::new(&env, "businesses");
+        let mut businesses: Map<Symbol, Business> = env
+            .storage()
+            .persistent()
+            .get(&businesses_key)
+            .unwrap_or_else(|| Map::new(&env)); // unwrap_or yerine unwrap_or_else kullanıldı
+
+        // İşletme adının daha önce kayıtlı olup olmadığını kontrol et
+        if businesses.contains_key(business_name.clone()) {
+            // Hata döndürmek için Err kullanıldı
+            return Err(ContractError::BusinessAlreadyRegistered);
+        }
+
+        // Yeni işletme oluştur
+        let business = Business {
+            business_name: business_name.clone(),
+            wallet_address: wallet_address.clone(),
+            registration_time: env.ledger().timestamp(),
+        };
+
+        // İşletmeyi kaydet
+        businesses.set(business_name.clone(), business.clone()); // set fonksiyonu business'ı tüketir, bu yüzden clone() kullanıldı
+        env.storage().persistent().set(&businesses_key, &businesses);
+
+        log!(&env, "Business registered: {} with wallet: {}", business_name, wallet_address);
+        
+        // Başarılı kayıt durumunda Business struct'ını döndür
+        Ok(business) // Başarılı sonucu döndürmek için Ok kullanıldı
+    }
+
+    /// İşletme bilgilerini getir fonksiyonu
+    ///
+    /// Verilen işletme adına göre kayıtlı işletmenin bilgilerini döndürür.
+    /// İşletme bulunamazsa bir hata döndürür.
+    pub fn get_business(env: Env, business_name: Symbol) -> Result<Business, ContractError> {
+        let businesses_key = Symbol::new(&env, "businesses");
+        let businesses: Map<Symbol, Business> = env
+            .storage()
+            .persistent()
+            .get(&businesses_key)
+            .unwrap_or_else(|| Map::new(&env));
+
+        match businesses.get(business_name.clone()) {
+            Some(business) => {
+                // İşletme bulundu, Business struct'ını döndür
+                Ok(business)
+            }
+            None => {
+                // İşletme bulunamadı, hata döndür
+                Err(ContractError::BusinessNotFound)
+            }
+        }
     }
 }

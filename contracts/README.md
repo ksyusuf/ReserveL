@@ -14,16 +14,18 @@ Bu dizin, ReserveL projesinin Stellar Soroban akıllı kontratını içerir.
 
 ```bash
 # Test hesabı oluştur
-soroban keys generate test1
+stellar keys generate alice
 
-# Hesabın public key'ini al
-TEST_ADDRESS=$(soroban keys address test1)
+# # Hesabın public key'ini al
+# TEST_ADDRESS=$(stellar keys address alice)
+# # Hesabı test tokenleri ile fonlarken detaylı bilgilendirir
+# curl "https://friendbot.stellar.org/?addr=$TEST_ADDRESS"
 
 # Hesabı test tokenleri ile fonla
-curl "https://friendbot.stellar.org/?addr=$TEST_ADDRESS"
+stellar keys fund alice
 
-# Hesap bilgilerini kontrol et
-soroban keys show test1
+# Hesap bilgilerini kontrol et (secret key)
+stellar keys show alice
 ```
 
 ### 2. Kontratı Build Etme
@@ -33,16 +35,16 @@ soroban keys show test1
 rm -rf target/
 
 # Kontratı build et
-soroban contract build
+stellar contract build
 ```
 
 ### 3. Kontratı Deploy Etme
 
 ```bash
-soroban contract deploy \
-    --wasm target/wasm32v1-none/release/reservel_contract.wasm \
-    --source test1 \
-    --network testnet
+stellar contract deploy \
+  --wasm target/wasm32v1-none/release/reservel_contract.wasm \
+  --source alice \
+  --network testnet
 ```
 
 Deploy işlemi başarılı olduğunda, terminal size bir kontrat ID'si verecektir. Bu ID'yi not alın, kontratınızla etkileşime geçmek için buna ihtiyacınız olacak.
@@ -50,13 +52,43 @@ Deploy işlemi başarılı olduğunda, terminal size bir kontrat ID'si verecekti
 ## Kontrat ID
 
 ```
-CAGSYHLNLJH6HXNKUXPEWQBQMIJOIZUGSTK766ORDVFU6NWTAJGFZV7V
+CBQS73A4EVXHT7YGMZWMOMG7D46UHRPVNBR74ISMRJLGVVJUMLPT4YCE
 ```
 
 ## Kontrat İşlemleri
 
 Kontratı test etmek ve işlemler yapmak için Stellar Expert üzerinden kontrat adresini kontrol edebilirsiniz:
-https://stellar.expert/explorer/testnet/contract/CDHFV27NLOSUEIT7VF5QTQZKEQCWDVTGXLAUEQEOZBT7AVLZJEIBRJGF
+https://stellar.expert/explorer/testnet/contract/CBQS73A4EVXHT7YGMZWMOMG7D46UHRPVNBR74ISMRJLGVVJUMLPT4YCE
+
+### 4. Kontratı init Etme (initialize)
+```bash
+stellar keys fund alice
+
+stellar contract invoke \
+  --id CBQS73A4EVXHT7YGMZWMOMG7D46UHRPVNBR74ISMRJLGVVJUMLPT4YCE \
+  --source-account alice \
+  --network testnet \
+  -- initialize \
+  --owner alice \
+  --loyalty-token-id CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC
+```
+
+get business
+stellar contract invoke \
+  --id CBQS73A4EVXHT7YGMZWMOMG7D46UHRPVNBR74ISMRJLGVVJUMLPT4YCE \
+  --source-account alice \
+  --network testnet \
+  -- get_business \
+  --business_name "yusuf"
+
+register business
+stellar contract invoke \
+  --id CBQS73A4EVXHT7YGMZWMOMG7D46UHRPVNBR74ISMRJLGVVJUMLPT4YCE \
+  --source-account alice \
+  --network testnet \
+  -- register_business \
+  --business_name "alice" \
+  --wallet_address alice
 
 ## Önemli Notlar
 
