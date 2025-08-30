@@ -1,23 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  TransactionBuilder,
-  BASE_FEE,
-  Networks,
-  Address,
-  nativeToScVal,
-  scValToNative,
-  StrKey,
-  Operation,
-  Memo,
-  rpc,
-  xdr, // xdr modülünü import ettiğinizden emin olun!
-} from '@stellar/stellar-sdk';
-
-import { signTransaction, getAddress } from '@stellar/freighter-api';
+import * as StellarSdk from '@stellar/stellar-sdk';
+import { signTransaction } from '@stellar/freighter-api';
 import { requestAccess } from '@stellar/freighter-api';
-import { Transaction } from '@stellar/stellar-sdk';
+import { CustomPollTransaction } from "../../contracts/contractActions"
 
 interface ReservationFormData {
   customerName: string;
@@ -96,31 +83,34 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
 
       const { address } = await requestAccess();
       console.log(address);
-      if (!address || !StrKey.isValidEd25519PublicKey(address)) {
+      if (!address || !StellarSdk.StrKey.isValidEd25519PublicKey(address)) {
         throw new Error('Freighter cüzdan adresi alınamadı veya geçersiz.');
       }
 
       const reservation_time = getReservationTimestamp(validatedData.date, validatedData.time);
       if (!reservation_time) throw new Error('Tarih ve saat geçersiz!');
 
-      const server = new rpc.Server(SOROBAN_RPC_URL);
+      const server = new StellarSdk.rpc.Server(
+        SOROBAN_RPC_URL,
+        { allowHttp: true },
+      );
       const account = await server.getAccount(address);
 
-      const tx = new TransactionBuilder(account, {
-        fee: BASE_FEE,
-        networkPassphrase: Networks.TESTNET,
-        memo: Memo.none(),
+      const tx = new StellarSdk.TransactionBuilder(account, {
+        fee: StellarSdk.BASE_FEE,
+        networkPassphrase: StellarSdk.Networks.TESTNET,
+        memo: StellarSdk.Memo.none(),
       })
         .addOperation(
-          Operation.invokeContractFunction({
+          StellarSdk.Operation.invokeContractFunction({
             contract: CONTRACT_ID,
             function: 'create_reservation',
             args: [
-              new Address(address).toScVal(),               // business_id
-              nativeToScVal(reservation_time, { type: 'u64' }),
-              nativeToScVal(validatedData.partySize, { type: 'u32' }),
-              nativeToScVal("10000000", { type: 'i128' }),  // 1 USD
-              nativeToScVal(undefined, { type: 'asset' }) // native asset anlamında
+              new StellarSdk.Address(address).toScVal(),               // business_id
+              StellarSdk.nativeToScVal(reservation_time, { type: 'u64' }),
+              StellarSdk.nativeToScVal(validatedData.partySize, { type: 'u32' }),
+              StellarSdk.nativeToScVal("10000000", { type: 'i128' }),  // 1 USD
+              StellarSdk.nativeToScVal(undefined, { type: 'asset' }) // native asset anlamında
             ],
           })
         )
@@ -131,105 +121,132 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
         console.log('Simülasyon sonucu:', simResult);
 
         // TypeScript'e burada returnValue olduğunu bildiriyoruz:
-        const returnValue = (simResult as any).returnValue;
+        // const returnValue = (simResult as any).returnValue;
 
-        if (returnValue && returnValue._arm === 'u64') {
-          const reservationId = Number(returnValue._value._value ?? returnValue._value);
-          console.log('Yeni rezervasyon ID:', reservationId);
-        }
+        // if (returnValue && returnValue._arm === 'u64') {
+        //   const reservationId = Number(returnValue._value._value ?? returnValue._value);
+        //   console.log('Yeni rezervasyon ID:', reservationId);
+        // }
+        /// normalde fonksiyonun dönüş değerine böyle erişiyorduk ama bozulmuş bu.
 
-        const assembledTx = rpc.assembleTransaction(tx, simResult);
+        const assembledTx = StellarSdk.rpc.assembleTransaction(tx, simResult);
 
-        const xdr = assembledTx.build().toXDR();
+        const xdrForSing = assembledTx.build().toXDR();
 
         // 🔐 İmzalama
-        const { signedTxXdr } = await signTransaction(xdr, {
-          networkPassphrase: Networks.TESTNET,
+        const { signedTxXdr } = await signTransaction(xdrForSing, {
+          networkPassphrase: StellarSdk.Networks.TESTNET,
         });
 
-        const signedTx = TransactionBuilder.fromXDR(signedTxXdr, Networks.TESTNET);
 
-        const sendResult = await server.sendTransaction(signedTx);
+        const signedTx = StellarSdk.TransactionBuilder.fromXDR(signedTxXdr, StellarSdk.Networks.TESTNET);
 
-        console.log('İşlem başarılı:', sendResult);
+        // const sendResult = await server.sendTransaction(signedTx);
 
-        
+        // console.log('İşlem başarılı:', sendResult);
 
-        const finalResult = await server.pollTransaction(sendResult.hash);
+        // console.log('sendResult.hash:', sendResult.hash);
 
-        console.log("xxx:", scValToNative((finalResult as any).returnValue));
-
-        const id = scValToNative((finalResult as any).returnValue);
-
-        setReservationId(id.toString());
-
-        // Zincir işlemi başarılı olduktan sonra veritabanına kaydet
-        if (finalResult && finalResult.status === 'SUCCESS') {
-          console.log('Zincir işlemi başarılı, veritabanına kaydediliyor...');
-          
-          const reservationData = {
-            customerName: validatedData.customerName,
-            customerPhone: validatedData.customerPhone,
-            date: validatedData.date,
-            time: validatedData.time,
-            numberOfPeople: validatedData.partySize,
-            businessId: address,
-            customerId: validatedData.customerId,
-            notes: validatedData.notes,
-            blockchainReservationId: id.toString(),
-            status: 'pending',
-            attendanceStatus: 'not_arrived',
-            confirmationStatus: 'pending'
-          };
-
-          console.log('Frontend\'den gönderilen reservationData:', JSON.stringify(reservationData, null, 2));
-
-          try {
-            const response = await fetch('/api/reservations', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(reservationData),
-            });
-
-            if (!response.ok) {
-              const errorData = await response.json();
-              console.error('Veritabanı kayıt hatası:', errorData);
-              throw new Error(`Veritabanına kayıt yapılamadı: ${errorData.error || 'Bilinmeyen hata'}`);
-            }
-
-            const savedReservation = await response.json();
-            console.log('Rezervasyon veritabanına başarıyla kaydedildi:', savedReservation);
-            
-            // Başarılı olduğunda callback'i çağır ve formu temizle
-            if (onReservationCreated) {
-              onReservationCreated(id.toString());
-            }
-            
-            // Formu temizle
-            setFormData({
-              customerName: '',
-              customerPhone: '',
-              date: '',
-              time: '',
-              notes: '',
-              customerId: '',
-              partySize: 1,
-            });
-          } catch (dbError: any) {
-            console.error('Veritabanı kayıt hatası:', dbError);
-            // Zincir işlemi başarılı ama veritabanı hatası - kullanıcıya bilgi ver
-            setError(`Rezervasyon zincire kaydedildi ancak veritabanına kayıt yapılamadı: ${dbError.message}`);
+        // Initialize Soroban RPC server for testnet
+        const rpc = new StellarSdk.rpc.Server("https://soroban-testnet.stellar.org");
+        let sendResult: StellarSdk.rpc.Api.SendTransactionResponse;
+        try {
+          sendResult = await rpc.sendTransaction(signedTx);
+          if (sendResult.status !== "PENDING") {
+            throw sendResult;
           }
+        } catch (error) {
+          console.error("Error sending transaction:", error);
+          throw error;
         }
 
-        if (!finalResult || finalResult.status !== 'SUCCESS') {
+        console.log("sendResult.hash: ", sendResult.hash);
+
+        // const finalStatus = await rpc.pollTransaction(sendResult.hash, {
+        //   sleepStrategy: (_iter: number) => 1000,
+        //   attempts: 10,
+        // });
+        // normalde bu pollTransaction çalışıyordu ve dönüş değerinden sdk metotları ile dönüşüm yaparak
+        // kontrat fonksiyonunun dönüş değerini vs. kolayca okuyabiliyordum ama bu sistem bozuldu.
+        // freighter api mi bozdu stellar mı bozdu anlamadım.
+        // artık getTransaction ile istek atıp sonucun onaylanmış olma durumuna göre id verisini de
+        // simülasyondan çekecek şekilde düzenledim...
+
+        let finalResult = await CustomPollTransaction(sendResult.hash);
+        console.log("finalResult: ", finalResult);
+        
+                
+        const lanet_big_id = (simResult as any).result.retval._value._value
+        const id = Number(lanet_big_id);
+        
+        setReservationId(id.toString());
+
+        if (!finalResult || finalResult.data.result.status !== 'SUCCESS') {
           console.error('İşlem zaman aşımına uğradı veya başarıyla tamamlanamadı.');
           throw new Error('Zincir işlemi başarısız oldu');
         }
 
+        // Zincir işlemi başarılı olduktan sonra veritabanına kaydet
+        console.log('Zincir işlemi başarılı, veritabanına kaydediliyor...');
+        
+        const reservationData = {
+          customerName: validatedData.customerName,
+          customerPhone: validatedData.customerPhone,
+          date: validatedData.date,
+          time: validatedData.time,
+          numberOfPeople: validatedData.partySize,
+          businessId: address,
+          customerId: validatedData.customerId,
+          notes: validatedData.notes,
+          blockchainReservationId: id.toString(),
+          status: 'pending',
+          attendanceStatus: 'not_arrived',
+          confirmationStatus: 'pending'
+        };
+
+        console.log('Frontend\'den gönderilen reservationData:', JSON.stringify(reservationData, null, 2));
+
+        try {
+          const response = await fetch('/api/reservations', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(reservationData),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Veritabanı kayıt hatası:', errorData);
+            throw new Error(`Veritabanına kayıt yapılamadı: ${errorData.error || 'Bilinmeyen hata'}`);
+          }
+
+          const savedReservation = await response.json();
+          console.log('Rezervasyon veritabanına başarıyla kaydedildi:', savedReservation);
+          
+          // Başarılı olduğunda callback'i çağır ve formu temizle
+          if (onReservationCreated) {
+            onReservationCreated(id.toString());
+          }
+          
+          // Formu temizle
+          setFormData({
+            customerName: '',
+            customerPhone: '',
+            date: '',
+            time: '',
+            notes: '',
+            customerId: '',
+            partySize: 1,
+          });
+        } catch (dbError: any) {
+          console.error('Veritabanı kayıt hatası:', dbError);
+          // Zincir işlemi başarılı ama veritabanı hatası - kullanıcıya bilgi ver
+          setError(`Rezervasyon zincire kaydedildi ancak veritabanına kayıt yapılamadı: ${dbError.message}`);
+        }
+
     } catch (err: any) {
+      console.log(err);
       setError(err.message || 'Bilinmeyen hata!');
     } finally {
       setLoading(false);

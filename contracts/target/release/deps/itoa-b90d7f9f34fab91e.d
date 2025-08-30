@@ -1,0 +1,8 @@
+/mnt/c/Users/ksyus/Documents/Yazılımsal Projeler/Rise In Stellar/ReserveL/contracts/target/release/deps/itoa-b90d7f9f34fab91e.d: /home/yusuf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/itoa-1.0.15/src/lib.rs /home/yusuf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/itoa-1.0.15/src/udiv128.rs
+
+/mnt/c/Users/ksyus/Documents/Yazılımsal Projeler/Rise In Stellar/ReserveL/contracts/target/release/deps/libitoa-b90d7f9f34fab91e.rlib: /home/yusuf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/itoa-1.0.15/src/lib.rs /home/yusuf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/itoa-1.0.15/src/udiv128.rs
+
+/mnt/c/Users/ksyus/Documents/Yazılımsal Projeler/Rise In Stellar/ReserveL/contracts/target/release/deps/libitoa-b90d7f9f34fab91e.rmeta: /home/yusuf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/itoa-1.0.15/src/lib.rs /home/yusuf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/itoa-1.0.15/src/udiv128.rs
+
+/home/yusuf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/itoa-1.0.15/src/lib.rs:
+/home/yusuf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/itoa-1.0.15/src/udiv128.rs:

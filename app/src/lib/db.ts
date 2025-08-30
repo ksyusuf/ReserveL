@@ -62,6 +62,58 @@ mongoose.connection.on('disconnected', () => {
   console.log('MongoDB bağlantısı kesildi');
 });
 
+// Business Schema
+const BusinessSchema = new mongoose.Schema({
+  businessName: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+  },
+  walletAddress: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+  },
+  registrationHash: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  email: {
+    type: String,
+    trim: true,
+    lowercase: true,
+  },
+  phone: {
+    type: String,
+    trim: true,
+  },
+  address: {
+    type: String,
+    trim: true,
+  },
+  description: {
+    type: String,
+    trim: true,
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+// Update the updatedAt timestamp before saving
+BusinessSchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
+});
+
 const ReservationSchema = new mongoose.Schema({
   reservationId: {
     type: String,
@@ -184,4 +236,5 @@ ReservationSchema.pre('save', function(next) {
   next();
 });
 
+export const Business = mongoose.models.Business || mongoose.model('Business', BusinessSchema);
 export const Reservation = mongoose.models.Reservation || mongoose.model('Reservation', ReservationSchema); 

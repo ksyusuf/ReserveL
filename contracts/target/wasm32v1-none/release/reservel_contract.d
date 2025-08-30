@@ -1,1 +1,1 @@
-/mnt/c/Users/ksyus/Documents/Yazılımsal\ Projeler/Rise\ In\ Stellar\ Ai\ Workshop/ReserveL/contracts/target/wasm32v1-none/release/reservel_contract.wasm: /mnt/c/Users/ksyus/Documents/Yazılımsal\ Projeler/Rise\ In\ Stellar\ Ai\ Workshop/ReserveL/contracts/src/lib.rs
+/mnt/c/Users/ksyus/Documents/Yazılımsal\ Projeler/Rise\ In\ Stellar/ReserveL/contracts/target/wasm32v1-none/release/reservel_contract.wasm: /mnt/c/Users/ksyus/Documents/Yazılımsal\ Projeler/Rise\ In\ Stellar/ReserveL/contracts/src/lib.rs
