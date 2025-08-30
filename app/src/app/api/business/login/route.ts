@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB, Business } from '@/lib/db';
-import bcrypt from 'bcryptjs';
 import { BusinessLoginData } from '@/types/Business';
 
 export async function POST(request: NextRequest) {
