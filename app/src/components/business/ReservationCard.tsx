@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Button from '../ui/Button';
 import { formatDate, formatTime } from '@/lib/utils';
 import { Reservation } from '@/types/Reservation';
@@ -58,11 +58,23 @@ export default function ReservationCard({
     setEditingNotes(null);
     setNoteText('');
   };
+
+  const [showAttendancePopup, setShowAttendancePopup] = useState(false);
+
+  const handleAttendanceAction = async (status: 'arrived' | 'no_show' | 'not_arrived') => {
+    if (status === 'not_arrived') {
+      await updateAttendanceStatus(reservation.reservationId, status);
+    } else {
+      await updateAttendanceStatus(reservation.reservationId, status, reservation.blockchainReservationId);
+    }
+    setShowAttendancePopup(false);
+  };
+
   return (
     <div
-      className="relative bg-gradient-to-r from-gray-800/50 to-gray-900/50 border border-gray-700/50 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-gray-600/50"
+      className="relative bg-gradient-to-r from-gray-800/50 to-gray-900/50 border border-gray-700/50 rounded-xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-gray-600/50"
     >
-      <div className="flex flex-col md:flex-row justify-between gap-6">
+      <div className="flex flex-col lg:flex-row justify-between gap-4 sm:gap-6">
         {/* SOL: Müşteri ve rezervasyon bilgileri */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-3 mb-2">
@@ -120,8 +132,8 @@ export default function ReservationCard({
           </div>
         </div>
         {/* SAĞ: Not kutusu */}
-        <div className="flex flex-col items-end min-w-[220px] max-w-xs w-full">
-          <div className="mb-2 w-[220px] flex items-start">
+        <div className="flex flex-col items-end w-full lg:w-auto lg:min-w-[220px] lg:max-w-xs">
+          <div className="mb-2 w-full lg:w-[220px] flex items-start">
             {editingNotes === reservation.reservationId ? (
               <NoteEditor
                 reservation={reservation}
@@ -134,128 +146,171 @@ export default function ReservationCard({
                 copiedId={copiedId}
               />
             ) : reservation.notes ? (
-              <div className="p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg w-full flex flex-col justify-between min-h-[48px] sm:min-h-[60px] md:min-h-[80px] lg:min-h-[100px] max-h-[120px] md:max-h-[160px]">
+              <div className="relative p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg w-full flex flex-col justify-between min-h-[48px] sm:min-h-[60px] lg:min-h-[80px] max-h-[120px] lg:max-h-[160px]">
+                {/* Not düzenleme butonu - sağ üst köşede */}
+                <button
+                  type="button"
+                  className="absolute top-2 right-2 p-1.5 text-blue-400 hover:text-blue-200 hover:bg-blue-500/20 rounded-md transition-colors duration-200"
+                  onClick={() => handleEditNotes(reservation)}
+                  title="Notu düzenle"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
                 <div>
                   <p className="text-sm text-blue-300 font-medium mb-1 flex items-center justify-between">
                     <span>📝 Not:</span>
                   </p>
-                  <p className="text-sm text-blue-200 italic break-words line-clamp-3">"{reservation.notes}"</p>
+                  <p className="text-sm text-blue-200 italic break-words line-clamp-3 pr-8">"{reservation.notes}"</p>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-blue-500 text-blue-500 hover:bg-blue-500/10 text-xs mt-2 self-end"
-                  onClick={() => handleEditNotes(reservation)}
-                >
-                  Düzenle
-                </Button>
               </div>
-            ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-blue-500 text-blue-500 hover:bg-blue-500/10 text-xs w-full min-h-[48px] sm:min-h-[60px] md:min-h-[80px] lg:min-h-[100px] max-h-[120px] md:max-h-[160px]"
-                onClick={() => handleEditNotes(reservation)}
-              >
-                + Not Ekle
-              </Button>
-            )}
+                         ) : (
+               <div className="relative w-full lg:w-auto lg:min-w-[220px] lg:max-w-xs">
+                 {/* Kompakt not ekleme butonu */}
+                 <button
+                   type="button"
+                   className="w-full lg:w-[220px] p-3 bg-blue-900/10 border border-blue-500/20 rounded-lg hover:bg-blue-900/20 hover:border-blue-500/30 transition-all duration-200 group flex items-center justify-center gap-2"
+                   onClick={() => handleEditNotes(reservation)}
+                   title="Not ekle"
+                 >
+                   <svg className="w-4 h-4 text-blue-400 group-hover:text-blue-300 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                   </svg>
+                   <span className="text-sm text-blue-400 group-hover:text-blue-300 font-medium transition-colors duration-200">Not Ekle</span>
+                 </button>
+               </div>
+             )}
           </div>
         </div>
       </div>
       {/* Action Buttons and Status */}
       <div className="flex flex-col sm:flex-row justify-between items-stretch pt-4 border-t border-gray-700/50 mt-4 gap-2">
         {/* Butonlar sola yaslı */}
-        <div className="flex space-x-2 order-1 sm:order-none">
+        <div className="flex flex-wrap gap-2 order-1 sm:order-none">
           {reservation.confirmationStatus === 'pending' && (
             <>
-              <Button
-                size="sm"
-                variant={reservation.attendanceStatus === 'arrived' ? 'primary' : 'outline'}
-                className={reservation.attendanceStatus === 'arrived'
-                  ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg'
-                  : 'border-green-500 text-green-500 hover:bg-green-500/10'
-                }
-                onClick={() => updateAttendanceStatus(reservation.reservationId, 'arrived', reservation.blockchainReservationId)}
-                isLoading={autoUpdatingAttendance === reservation.reservationId && false} // Sadece no_show için spinner
-              >
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Geldi
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-orange-500 text-orange-500 hover:bg-orange-500/10"
-                onClick={() => updateAttendanceStatus(reservation.reservationId, 'no_show', reservation.blockchainReservationId)}
-                isLoading={autoUpdatingAttendance === reservation.reservationId}
-              >
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Gelmedi
-              </Button>
-              <Button
-                size="sm"
-                variant={reservation.attendanceStatus === 'not_arrived' ? 'primary' : 'outline'}
-                className={reservation.attendanceStatus === 'not_arrived'
-                  ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg'
-                  : 'border-red-500 text-red-500 hover:bg-red-500/10'
-                }
-                onClick={() => updateAttendanceStatus(reservation.reservationId, 'not_arrived')}
-                isLoading={false}
-              >
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                İptal Et
-              </Button>
+              {/* Desktop: Normal butonlar */}
+              <div className="hidden sm:flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={reservation.attendanceStatus === 'arrived' ? 'primary' : 'outline'}
+                  className={reservation.attendanceStatus === 'arrived'
+                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg'
+                    : 'border-green-500 text-green-500 hover:bg-green-500/10'
+                  }
+                  onClick={() => updateAttendanceStatus(reservation.reservationId, 'arrived', reservation.blockchainReservationId)}
+                  isLoading={autoUpdatingAttendance === reservation.reservationId && false}
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Geldi
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-orange-500 text-orange-500 hover:bg-orange-500/10"
+                  onClick={() => updateAttendanceStatus(reservation.reservationId, 'no_show', reservation.blockchainReservationId)}
+                  isLoading={autoUpdatingAttendance === reservation.reservationId}
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Gelmedi
+                </Button>
+                <Button
+                  size="sm"
+                  variant={reservation.attendanceStatus === 'not_arrived' ? 'primary' : 'outline'}
+                  className={reservation.attendanceStatus === 'not_arrived'
+                    ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg'
+                    : 'border-red-500 text-red-500 hover:bg-red-500/10'
+                  }
+                  onClick={() => updateAttendanceStatus(reservation.reservationId, 'not_arrived')}
+                  isLoading={false}
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  İptal Et
+                </Button>
+              </div>
+              {/* Mobile: Popup butonu */}
+              <div className="sm:hidden">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-blue-500 text-blue-500 hover:bg-blue-500/10"
+                  onClick={() => setShowAttendancePopup(true)}
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  Durum
+                </Button>
+              </div>
             </>
           )}
           {reservation.confirmationStatus === 'confirmed' && (
             <>
-              <Button
-                size="sm"
-                variant={reservation.attendanceStatus === 'arrived' ? 'primary' : 'outline'}
-                className={reservation.attendanceStatus === 'arrived' 
-                  ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg' 
-                  : 'border-green-500 text-green-500 hover:bg-green-500/10'
-                }
-                onClick={() => updateAttendanceStatus(reservation.reservationId, 'arrived', reservation.blockchainReservationId)}
-                disabled={reservation.attendanceStatus === 'arrived' || updatingContract === reservation.reservationId}
-              >
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                {updatingContract === reservation.reservationId ? 'Token Veriliyor...' : 'Geldi'}
-              </Button>
-              <Button
-                size="sm"
-                variant={reservation.attendanceStatus === 'no_show' ? 'primary' : 'outline'}
-                className={reservation.attendanceStatus === 'no_show' 
-                  ? 'bg-orange-600 hover:bg-orange-700 text-white shadow-lg' 
-                  : 'border-orange-500 text-orange-500 hover:bg-orange-500/10'
-                }
-                onClick={() => updateAttendanceStatus(reservation.reservationId, 'no_show', reservation.blockchainReservationId)}
-                disabled={reservation.attendanceStatus === 'no_show'}
-              >
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Gelmedi
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-red-600 text-red-600 hover:bg-red-600/20 hover:border-red-500 hover:text-red-500 bg-red-600/10"
-                onClick={() => cancelConfirmedReservation(reservation.reservationId)}
-              >
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                İptal Et
-              </Button>
+              {/* Desktop: Normal butonlar */}
+              <div className="hidden sm:flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={reservation.attendanceStatus === 'arrived' ? 'primary' : 'outline'}
+                  className={reservation.attendanceStatus === 'arrived' 
+                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg' 
+                    : 'border-green-500 text-green-500 hover:bg-green-500/10'
+                  }
+                  onClick={() => updateAttendanceStatus(reservation.reservationId, 'arrived', reservation.blockchainReservationId)}
+                  disabled={reservation.attendanceStatus === 'arrived' || updatingContract === reservation.reservationId}
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {updatingContract === reservation.reservationId ? 'Token Veriliyor...' : 'Geldi'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={reservation.attendanceStatus === 'no_show' ? 'primary' : 'outline'}
+                  className={reservation.attendanceStatus === 'no_show' 
+                    ? 'bg-orange-600 hover:bg-orange-700 text-white shadow-lg' 
+                    : 'border-orange-500 text-orange-500 hover:bg-orange-500/10'
+                  }
+                  onClick={() => updateAttendanceStatus(reservation.reservationId, 'no_show', reservation.blockchainReservationId)}
+                  disabled={reservation.attendanceStatus === 'no_show'}
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Gelmedi
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-red-600 text-red-600 hover:bg-red-600/20 hover:border-red-500 hover:text-red-500 bg-red-600/10"
+                  onClick={() => cancelConfirmedReservation(reservation.reservationId)}
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  İptal Et
+                </Button>
+              </div>
+              {/* Mobile: Popup butonu */}
+              <div className="sm:hidden">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-blue-500 text-blue-500 hover:bg-blue-500/10"
+                  onClick={() => setShowAttendancePopup(true)}
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  Durum
+                </Button>
+              </div>
             </>
           )}
         </div>
@@ -338,8 +393,142 @@ export default function ReservationCard({
               ⏳ Token Bekliyor
             </span>
           )}
-        </div>
-      </div>
-    </div>
-  );
-} 
+                 </div>
+       </div>
+
+       {/* Attendance Popup */}
+       {showAttendancePopup && (
+         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 rounded-xl">
+           <div className="bg-gray-900/85 border border-gray-700/50 rounded-2xl p-4 w-full max-w-xs shadow-2xl backdrop-blur-xl">
+             <div className="flex items-center justify-between mb-3">
+               <h3 className="text-base font-medium text-white">Durum Güncelle</h3>
+               <button
+                 onClick={() => setShowAttendancePopup(false)}
+                 className="text-gray-400 hover:text-white transition-colors p-1 rounded-full hover:bg-gray-800/50"
+               >
+                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                 </svg>
+               </button>
+             </div>
+             
+             <div className="space-y-2">
+               {reservation.confirmationStatus === 'pending' && (
+                 <>
+                   <button
+                     onClick={() => handleAttendanceAction('arrived')}
+                     disabled={autoUpdatingAttendance === reservation.reservationId}
+                     className={`w-full p-2.5 rounded-xl border transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium ${
+                       reservation.attendanceStatus === 'arrived'
+                         ? 'bg-green-600/90 border-green-500/50 text-white shadow-lg'
+                         : 'border-green-500/50 text-green-400 hover:bg-green-500/10 hover:border-green-400/70'
+                     }`}
+                   >
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                     </svg>
+                     Geldi
+                     {autoUpdatingAttendance === reservation.reservationId && (
+                       <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                       </svg>
+                     )}
+                   </button>
+                   
+                   <button
+                     onClick={() => handleAttendanceAction('no_show')}
+                     disabled={autoUpdatingAttendance === reservation.reservationId}
+                     className={`w-full p-2.5 rounded-xl border transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium ${
+                       reservation.attendanceStatus === 'no_show'
+                         ? 'bg-orange-600/90 border-orange-500/50 text-white shadow-lg'
+                         : 'border-orange-500/50 text-orange-400 hover:bg-orange-500/10 hover:border-orange-400/70'
+                     }`}
+                   >
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                     </svg>
+                     Gelmedi
+                     {autoUpdatingAttendance === reservation.reservationId && (
+                       <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                       </svg>
+                     )}
+                   </button>
+                   
+                   <button
+                     onClick={() => handleAttendanceAction('not_arrived')}
+                     className={`w-full p-2.5 rounded-xl border transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium ${
+                       reservation.attendanceStatus === 'not_arrived'
+                         ? 'bg-red-600/90 border-red-500/50 text-white shadow-lg'
+                         : 'border-red-500/50 text-red-400 hover:bg-red-500/10 hover:border-red-400/70'
+                     }`}
+                   >
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                     </svg>
+                     İptal Et
+                   </button>
+                 </>
+               )}
+               
+               {reservation.confirmationStatus === 'confirmed' && (
+                 <>
+                   <button
+                     onClick={() => handleAttendanceAction('arrived')}
+                     disabled={reservation.attendanceStatus === 'arrived' || updatingContract === reservation.reservationId}
+                     className={`w-full p-2.5 rounded-xl border transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium ${
+                       reservation.attendanceStatus === 'arrived'
+                         ? 'bg-green-600/90 border-green-500/50 text-white shadow-lg'
+                         : 'border-green-500/50 text-green-400 hover:bg-green-500/10 hover:border-green-400/70'
+                     }`}
+                   >
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                     </svg>
+                     {updatingContract === reservation.reservationId ? 'Token Veriliyor...' : 'Geldi'}
+                     {updatingContract === reservation.reservationId && (
+                       <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                       </svg>
+                     )}
+                   </button>
+                   
+                   <button
+                     onClick={() => handleAttendanceAction('no_show')}
+                     disabled={reservation.attendanceStatus === 'no_show'}
+                     className={`w-full p-2.5 rounded-xl border transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium ${
+                       reservation.attendanceStatus === 'no_show'
+                         ? 'bg-orange-600/90 border-orange-500/50 text-white shadow-lg'
+                         : 'border-orange-500/50 text-orange-400 hover:bg-orange-500/10 hover:border-orange-400/70'
+                     }`}
+                   >
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                     </svg>
+                     Gelmedi
+                   </button>
+                   
+                   <button
+                     onClick={() => {
+                       cancelConfirmedReservation(reservation.reservationId);
+                       setShowAttendancePopup(false);
+                     }}
+                     className="w-full p-2.5 rounded-xl border border-red-500/50 text-red-400 hover:bg-red-500/10 hover:border-red-400/70 bg-red-500/5 transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium"
+                   >
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                     </svg>
+                     İptal Et
+                   </button>
+                 </>
+               )}
+             </div>
+           </div>
+         </div>
+       )}
+     </div>
+   );
+ } 

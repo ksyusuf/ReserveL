@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { connectWallet } from '@/lib/wallet';
 import { registerBusinessOnContract } from '@/contracts/contractActions';
 
-
 export default function BusinessRegisterPage() {
   const [formData, setFormData] = useState({
     businessName: '',
@@ -51,10 +50,6 @@ export default function BusinessRegisterPage() {
         setSuccess('');
         throw new Error(contractResult.registrationHash);
       }
-      //todo: veritabanına kaydetme yaparken aynı cüzdanla kayıt yapılmışsa kayıt engellenir.
-      // ama buraya gelince zincire kayıt yapılmış oluyır.
-      // işletme kaydı iki parçaya ayrılmalı, böyle cüzdan kontrolü, zincir kaydından önce yapılmalı.
-      // veritabanı kontrolü -> zincir kontrolü / kaydı -> veritabanına kayıt
 
       // 3. Veritabanına kayıt
       setSuccess('Veritabanına kaydediliyor...');
@@ -88,127 +83,213 @@ export default function BusinessRegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 py-8">
-      <div className="max-w-2xl w-full space-y-8 p-8 bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-white mb-2">İşletme Kaydı</h2>
-          <p className="text-gray-300">Sisteme kayıt olmak için cüzdanınızla imzalama yapın</p>
+    <div className="w-full max-w-4xl mx-auto">
+      {/* Hero Section */}
+      <div className="text-center mb-12">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-600 to-blue-600 rounded-2xl mb-6 shadow-lg">
+          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        </div>
+        <h1 className="text-5xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent mb-4">
+          ReserveL
+        </h1>
+        <p className="text-xl text-gray-300 font-light max-w-2xl mx-auto leading-relaxed">
+          İşletmenizi blockchain tabanlı rezervasyon sistemine kaydedin ve müşterilerinizle güvenli bir şekilde buluşun
+        </p>
+      </div>
+
+      {/* Main Form Container */}
+      <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/10">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-white mb-3">İşletme Kaydı</h2>
+          <p className="text-gray-400">Cüzdanınızla güvenli ve hızlı kayıt</p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="space-y-8" onSubmit={handleSubmit}>
+          {/* Status Messages */}
           {error && (
-            <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg">
-              {error}
+            <div className="bg-red-500/10 border border-red-500/30 text-red-300 px-6 py-4 rounded-xl backdrop-blur-sm">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {error}
+              </div>
             </div>
           )}
 
           {success && (
-            <div className="bg-green-500/20 border border-green-500/50 text-green-200 px-4 py-3 rounded-lg">
-              {success}
+            <div className="bg-green-500/10 border border-green-500/30 text-green-300 px-6 py-4 rounded-xl backdrop-blur-sm">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {success}
+              </div>
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="businessName" className="block text-sm font-medium text-gray-300 mb-2">
-                İşletme Adı *
+          {/* Form Fields */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Business Name */}
+            <div className="space-y-2">
+              <label htmlFor="businessName" className="block text-sm font-semibold text-gray-300">
+                İşletme Adı <span className="text-red-400">*</span>
               </label>
-              <input
-                id="businessName"
-                name="businessName"
-                type="text"
-                required
-                value={formData.businessName}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="İşletme adınızı girin"
-              />
+              <div className="relative">
+                <input
+                  id="businessName"
+                  name="businessName"
+                  type="text"
+                  required
+                  value={formData.businessName}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-300 backdrop-blur-sm"
+                  placeholder="İşletme adınızı girin"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-4">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                E-posta
+            {/* Email */}
+            <div className="space-y-2">
+              <label htmlFor="email" className="block text-sm font-semibold text-gray-300">
+                E-posta Adresi
               </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="E-posta adresiniz"
-              />
+              <div className="relative">
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-300 backdrop-blur-sm"
+                  placeholder="ornek@email.com"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-4">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-300 mb-2">
-                Telefon
+            {/* Phone */}
+            <div className="space-y-2">
+              <label htmlFor="phone" className="block text-sm font-semibold text-gray-300">
+                Telefon Numarası
               </label>
-              <input
-                id="phone"
-                name="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Telefon numaranız"
-              />
+              <div className="relative">
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-300 backdrop-blur-sm"
+                  placeholder="+90 555 123 45 67"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-4">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Address */}
+            <div className="space-y-2">
+              <label htmlFor="address" className="block text-sm font-semibold text-gray-300">
+                İşletme Adresi
+              </label>
+              <div className="relative">
+                <input
+                  id="address"
+                  name="address"
+                  type="text"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-300 backdrop-blur-sm"
+                  placeholder="İşletme adresiniz"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-4">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div>
-            <label htmlFor="address" className="block text-sm font-medium text-gray-300 mb-2">
-              Adres
-            </label>
-            <input
-              id="address"
-              name="address"
-              type="text"
-              value={formData.address}
-              onChange={handleInputChange}
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              placeholder="İşletme adresiniz"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-2">
-              Açıklama
+          {/* Description */}
+          <div className="space-y-2">
+            <label htmlFor="description" className="block text-sm font-semibold text-gray-300">
+              İşletme Açıklaması
             </label>
             <textarea
               id="description"
               name="description"
-              rows={3}
+              rows={4}
               value={formData.description}
               onChange={handleInputChange}
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-              placeholder="İşletmeniz hakkında kısa açıklama"
+              className="w-full px-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 resize-none transition-all duration-300 backdrop-blur-sm"
+              placeholder="İşletmeniz hakkında kısa bir açıklama yazın..."
             />
           </div>
 
-          <div className="bg-blue-500/20 border border-blue-500/50 text-blue-200 px-4 py-3 rounded-lg">
-            <p className="text-sm">
-              <strong>Önemli:</strong> Kayıt işlemi sırasında cüzdanınızla imzalama yapmanız gerekecektir. 
-              Cüzdan adresiniz otomatik olarak alınacak ve işletmenizi sisteme kaydedecektir.
-            </p>
+          {/* Info Card */}
+          <div className="bg-gradient-to-r from-green-500/10 to-blue-500/10 border border-green-500/20 text-green-200 px-6 py-4 rounded-xl backdrop-blur-sm">
+            <div className="flex items-start">
+              <svg className="w-6 h-6 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="font-medium mb-1">Güvenli Kayıt Süreci</p>
+                <p className="text-sm text-green-300/80">
+                  Kayıt işlemi sırasında cüzdanınızla imzalama yapmanız gerekecektir. 
+                  Cüzdan adresiniz otomatik olarak alınacak ve işletmenizi blockchain'e kaydedecektir.
+                </p>
+              </div>
+            </div>
           </div>
 
+          {/* Submit Button */}
           <div>
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              className="w-full flex justify-center items-center py-4 px-6 border border-transparent rounded-xl shadow-lg text-lg font-semibold text-white bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
             >
-              {isLoading ? 'Kayıt yapılıyor...' : 'Cüzdanla İmzala ve Kayıt Ol'}
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Kayıt yapılıyor...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  Cüzdanla İmzala ve Kayıt Ol
+                </>
+              )}
             </button>
           </div>
 
-          <div className="text-center">
-            <p className="text-gray-300">
+          {/* Login Link */}
+          <div className="text-center pt-6 border-t border-white/10">
+            <p className="text-gray-400">
               Zaten hesabınız var mı?{' '}
-              <Link href="/business-login" className="text-purple-400 hover:text-purple-300 font-medium">
+              <Link href="/business-login" className="text-green-400 hover:text-green-300 font-semibold transition-colors duration-200 hover:underline">
                 Giriş yapın
               </Link>
             </p>

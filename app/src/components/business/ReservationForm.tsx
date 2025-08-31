@@ -254,114 +254,203 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
+    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+      {/* Error Message */}
       {error && (
-        <div className="bg-red-900 text-white p-3 rounded-md text-sm">
-          <p>{error}</p>
+        <div className="bg-red-500/10 border border-red-500/30 text-red-300 px-3 sm:px-4 py-3 rounded-xl backdrop-blur-sm">
+          <div className="flex items-center">
+            <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-xs sm:text-sm">{error}</span>
+          </div>
         </div>
       )}
 
-      <div>
-        <label className="block text-sm font-medium text-gray-300 mb-1">Müşteri Adı</label>
-        <input
-          type="text"
-          value={formData.customerName}
-          onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-          className="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm py-2 px-3"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-300 mb-1">Müşteri Telefonu</label>
-        <input
-          type="tel"
-          value={formData.customerPhone}
-          onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
-          className="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm py-2 px-3"
-          required
-        />
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
+      {/* Customer Information */}
+      <div className="space-y-3 sm:space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Tarih</label>
-          <input
-            type="date"
-            value={formData.date}
-            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-            className="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm py-2 px-3"
-            required
-          />
+          <label className="block text-xs sm:text-sm font-semibold text-gray-300 mb-1 sm:mb-2">
+            Müşteri Adı <span className="text-red-400">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              value={formData.customerName}
+              onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-300 backdrop-blur-sm text-sm sm:text-base"
+              placeholder="Müşteri adını girin"
+              required
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 sm:pr-4">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+          </div>
         </div>
+
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Saat</label>
-          <input
-            type="time"
-            value={formData.time}
-            onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-            className="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm py-2 px-3"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Kişi Sayısı</label>
-          <input
-            type="number"
-            min={1}
-            value={formData.partySize}
-            onChange={(e) => setFormData({ ...formData, partySize: Number(e.target.value) })}
-            className="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm py-2 px-3"
-            required
-          />
+          <label className="block text-xs sm:text-sm font-semibold text-gray-300 mb-1 sm:mb-2">
+            Müşteri Telefonu <span className="text-red-400">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="tel"
+              value={formData.customerPhone}
+              onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-300 backdrop-blur-sm text-sm sm:text-base"
+              placeholder="+90 555 123 45 67"
+              required
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 sm:pr-4">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+              </svg>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="mt-6 border-t border-gray-600 pt-4">
-        <label className="block text-sm font-medium text-gray-300 mb-1">Notlar</label>
+      {/* Reservation Details */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div>
+          <label className="block text-xs sm:text-sm font-semibold text-gray-300 mb-1 sm:mb-2">
+            Tarih <span className="text-red-400">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="date"
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-300 backdrop-blur-sm text-sm sm:text-base"
+              required
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 sm:pr-4">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs sm:text-sm font-semibold text-gray-300 mb-1 sm:mb-2">
+            Saat <span className="text-red-400">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="time"
+              value={formData.time}
+              onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-300 backdrop-blur-sm text-sm sm:text-base"
+              required
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 sm:pr-4">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="sm:col-span-2 lg:col-span-1">
+          <label className="block text-xs sm:text-sm font-semibold text-gray-300 mb-1 sm:mb-2">
+            Kişi Sayısı <span className="text-red-400">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              min={1}
+              value={formData.partySize}
+              onChange={(e) => setFormData({ ...formData, partySize: Number(e.target.value) })}
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-300 backdrop-blur-sm text-sm sm:text-base"
+              required
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 sm:pr-4">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Notes Section */}
+      <div className="border-t border-white/10 pt-4 sm:pt-6">
+        <label className="block text-xs sm:text-sm font-semibold text-gray-300 mb-1 sm:mb-2">
+          Özel Notlar
+        </label>
         <textarea
           value={formData.notes}
           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          className="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm py-2 px-3 resize-none"
+          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 resize-none transition-all duration-300 backdrop-blur-sm text-sm sm:text-base"
           rows={3}
           placeholder="Rezervasyon hakkında özel notlar..."
         />
       </div>
 
+      {/* Submit Button */}
       <button
         type="submit"
         disabled={loading}
-        className="w-full mt-6 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm font-medium shadow-lg transition-all"
+        className="w-full flex justify-center items-center py-3 sm:py-4 px-4 sm:px-6 border border-transparent rounded-xl shadow-lg text-base sm:text-lg font-semibold text-white bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
       >
-        {loading ? 'Rezervasyon Oluşturuluyor...' : 'Rezervasyon Oluştur'}
+        {loading ? (
+          <>
+            <svg className="animate-spin -ml-1 mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span className="text-sm sm:text-base">Rezervasyon Oluşturuluyor...</span>
+          </>
+        ) : (
+          <>
+            <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <span className="text-sm sm:text-base">Rezervasyon Oluştur</span>
+          </>
+        )}
       </button>
 
+      {/* Success Message with Link */}
       {reservationId && (
-        <div className="mt-4 p-3 bg-green-900/20 rounded border border-green-500/30 backdrop-blur-sm">
-          <div className="flex items-center">
-            <input
-              type="text"
-              readOnly
-              value={`${typeof window !== 'undefined' ? window.location.origin : ''}/customer-page?reservationId=${reservationId}`}
-              className="w-full text-xs bg-gray-700 text-white px-2 py-1 rounded border border-gray-600"
-              onFocus={e => e.target.select()}
-            />
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  navigator.clipboard.writeText(`${window.location.origin}/customer-page?reservationId=${reservationId}`);
-                }
-              }}
-              className="ml-2 p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-              title="Kopyala"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-            </button>
+        <div className="bg-green-500/10 border border-green-500/30 text-green-300 px-4 sm:px-6 py-3 sm:py-4 rounded-xl backdrop-blur-sm">
+          <div className="flex items-start">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="flex-1">
+              <p className="font-medium mb-2 text-sm sm:text-base">Rezervasyon başarıyla oluşturuldu!</p>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/customer-page?reservationId=${reservationId}`}
+                  className="flex-1 text-xs sm:text-sm bg-white/5 text-white px-2 sm:px-3 py-1 sm:py-2 rounded-lg border border-white/10"
+                  onFocus={e => e.target.select()}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      navigator.clipboard.writeText(`${window.location.origin}/customer-page?reservationId=${reservationId}`);
+                    }
+                  }}
+                  className="p-1.5 sm:p-2 bg-green-600/20 text-green-300 rounded-lg hover:bg-green-600/30 transition-colors border border-green-500/30"
+                  title="Kopyala"
+                >
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-xs text-green-300/80 mt-2">
+                Bu linki müşteriyle paylaşarak rezervasyonun onaylanmasını sağlayabilirsiniz.
+              </p>
+            </div>
           </div>
-          <div className="text-xs text-gray-400 mt-1">Bu linki müşteriyle paylaşarak rezervasyonun onaylanmasını sağlayabilirsiniz.</div>
         </div>
       )}
     </form>
