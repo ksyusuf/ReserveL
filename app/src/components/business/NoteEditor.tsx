@@ -13,7 +13,7 @@ export default function NoteEditor({
 }: any) {
   // Yorum ve log satırlarını silme!
   return (
-    <div className="p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg w-full flex flex-col min-h-[48px] sm:min-h-[60px] md:min-h-[80px] lg:min-h-[100px] max-h-[120px] md:max-h-[160px]">
+    <div className="p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg w-full flex flex-col min-h-[48px] sm:min-h-[60px] lg:min-h-[80px] max-h-[120px] lg:max-h-[160px]">
       <p className="text-sm text-blue-300 font-medium mb-2 flex items-center justify-between">
         <span>📝 Not:</span>
         <button
@@ -28,11 +28,11 @@ export default function NoteEditor({
       <textarea
         value={noteText}
         onChange={(e) => setNoteText(e.target.value)}
-        className="w-full flex-1 bg-blue-900/20 border border-blue-500/30 rounded-lg text-white text-sm resize-none min-h-[24px] sm:min-h-[32px] md:min-h-[48px] lg:min-h-[64px] max-h-[60px] md:max-h-[100px]"
+        className="w-full flex-1 bg-blue-900/20 border border-blue-500/30 rounded-lg text-white text-sm resize-none min-h-[24px] sm:min-h-[32px] lg:min-h-[48px] max-h-[60px] lg:max-h-[100px]"
         rows={2}
         placeholder="Not ekleyin..."
       />
-      <div className="flex gap-2 mt-2">
+      <div className="flex flex-wrap gap-2 mt-2">
         <Button
           size="sm"
           variant="outline"

@@ -42,12 +42,19 @@ export default function PaymentSection({
   if (reservationStatus.confirmationStatus === 'confirmed') {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
-        <div className="bg-green-50 border border-green-400 shadow-sm p-6 rounded-xl max-w-md w-full text-center">
-          <h2 className="text-2xl font-bold text-green-900 mb-2">Rezervasyon Onaylandı</h2>
-          <p className="text-green-800 text-base">
-            Bu rezervasyon zaten <span className="font-semibold">onaylanmış</span> ve ödeme tamamlanmıştır.<br/>
-            Herhangi bir işlem yapmanıza gerek yoktur.
-          </p>
+        <div className="bg-green-500/10 border border-green-500/30 text-green-300 px-6 py-6 rounded-xl backdrop-blur-sm max-w-md w-full">
+          <div className="flex items-start">
+            <svg className="w-6 h-6 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <h2 className="text-xl font-semibold mb-2">Rezervasyon Onaylandı</h2>
+              <p className="text-sm text-green-300/80">
+                Bu rezervasyon zaten <span className="font-semibold">onaylanmış</span> ve ödeme tamamlanmıştır.<br/>
+                Herhangi bir işlem yapmanıza gerek yoktur.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -57,11 +64,18 @@ export default function PaymentSection({
   if (reservationStatus.confirmationStatus === 'cancelled') {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
-        <div className="bg-red-50 border border-red-400 shadow-sm p-6 rounded-xl max-w-md w-full text-center">
-          <h2 className="text-2xl font-bold text-red-900 mb-2">Rezervasyon İptal Edildi</h2>
-          <p className="text-red-800 text-base">
-            Bu rezervasyon <span className="font-semibold">iptal edilmiştir</span>. Onaylama işlemi yapılamaz.
-          </p>
+        <div className="bg-red-500/10 border border-red-500/30 text-red-300 px-6 py-6 rounded-xl backdrop-blur-sm max-w-md w-full">
+          <div className="flex items-start">
+            <svg className="w-6 h-6 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <h2 className="text-xl font-semibold mb-2">Rezervasyon İptal Edildi</h2>
+              <p className="text-sm text-red-300/80">
+                Bu rezervasyon <span className="font-semibold">iptal edilmiştir</span>. Onaylama işlemi yapılamaz.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -160,33 +174,77 @@ export default function PaymentSection({
   };
 
   return (
-    <div className="flex justify-center items-center min-h-[320px]">
-      <div className="bg-gray-800 rounded-xl p-6 shadow-lg max-w-md w-full flex flex-col gap-5">
-        <h2 className="text-2xl font-bold text-white mb-1 text-center">Rezervasyon Onayı</h2>
-        <p className="text-gray-200 text-base mb-2 text-center">
-          Rezervasyonunuzu onaylamak için cüzdanınızla giriş yapın ve <span className="font-semibold text-white">onayla</span> butonuna tıklayın.<br/>
-          <span className="text-white font-medium">Bu işlem rezervasyonunuzu onaylayacak ve ödeme işlemini başlatacaktır.</span>
-        </p>
-        <ul className="list-disc pl-5 text-gray-300 text-sm mb-2 mx-auto text-left max-w-xs">
-          <li>Cüzdanınızda yeterli bakiye olduğundan emin olun.</li>
-          <li>İşlem sırasında cüzdanınızdan onay vermeniz istenecektir.</li>
-        </ul>
-        {error && (
-          <div className="bg-red-900 border border-red-500 text-white font-semibold p-4 rounded-md shadow flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {error}
+    <div className="space-y-6">
+      {/* Info Card */}
+      <div className="bg-blue-500/10 border border-blue-500/20 text-blue-200 px-4 sm:px-6 py-4 rounded-xl backdrop-blur-sm">
+        <div className="flex items-start">
+          <svg className="w-6 h-6 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <p className="font-medium mb-2">Rezervasyon Onayı</p>
+            <p className="text-sm text-blue-300/80">
+              Rezervasyonunuzu onaylamak için cüzdanınızla giriş yapın ve <span className="font-semibold">onayla</span> butonuna tıklayın.
+              Bu işlem rezervasyonunuzu onaylayacak ve ödeme işlemini başlatacaktır.
+            </p>
           </div>
-        )}
-        <Button
-          onClick={handleConfirm}
-          disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-md text-lg shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? 'İşlem Yapılıyor...' : 'Rezervasyonu Onayla'}
-        </Button>
+        </div>
       </div>
+
+      {/* Instructions */}
+      <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-white/10">
+        <h3 className="text-lg font-semibold text-white mb-4">Önemli Bilgiler</h3>
+        <ul className="space-y-3">
+          <li className="flex items-start space-x-3">
+            <div className="flex-shrink-0 w-2 h-2 bg-blue-400 rounded-full mt-2"></div>
+            <span className="text-sm text-gray-300">Cüzdanınızda yeterli bakiye olduğundan emin olun.</span>
+          </li>
+          <li className="flex items-start space-x-3">
+            <div className="flex-shrink-0 w-2 h-2 bg-blue-400 rounded-full mt-2"></div>
+            <span className="text-sm text-gray-300">İşlem sırasında cüzdanınızdan onay vermeniz istenecektir.</span>
+          </li>
+          <li className="flex items-start space-x-3">
+            <div className="flex-shrink-0 w-2 h-2 bg-blue-400 rounded-full mt-2"></div>
+            <span className="text-sm text-gray-300">Onaylama işlemi blockchain'e kaydedilecek ve geri alınamaz.</span>
+          </li>
+        </ul>
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 text-red-300 px-4 sm:px-6 py-4 rounded-xl backdrop-blur-sm">
+          <div className="flex items-center">
+            <svg className="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm">{error}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Submit Button */}
+      <button
+        onClick={handleConfirm}
+        disabled={loading}
+        className="w-full flex justify-center items-center py-4 px-6 border border-transparent rounded-xl shadow-lg text-lg font-semibold text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+      >
+        {loading ? (
+          <>
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            İşlem Yapılıyor...
+          </>
+        ) : (
+          <>
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Rezervasyonu Onayla
+          </>
+        )}
+      </button>
     </div>
   );
 } 

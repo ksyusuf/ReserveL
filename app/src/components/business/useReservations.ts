@@ -17,7 +17,12 @@ export default function useReservations({ onReservationCreated, lastCreatedReser
 
   // Yoruma özel URL oluşturucu
   const getApprovalUrl = useCallback((reservationId: string) => {
-    return `https://reserve-l.vercel.app/customer-page?reservationId=${reservationId}`;
+    const env = process.env.NEXT_PUBLIC_ENVIRONMENT;
+    const baseUrl =
+      env === 'Production'
+        ? 'https://reserve-l.vercel.app'
+        : 'http://localhost:3000';
+    return `${baseUrl}/customer-page?reservationId=${reservationId}`;
   }, []);
 
   // Panoya kopyalama fonksiyonu
