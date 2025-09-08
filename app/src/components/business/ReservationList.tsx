@@ -19,6 +19,7 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
     error,
     updatingContract,
     autoUpdatingAttendance,
+    reservationErrors,
     fetchReservations,
     updateAttendanceStatus,
     updateReservationStatus,
@@ -122,6 +123,7 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
                 reservation={reservation}
                 updatingContract={updatingContract}
                 autoUpdatingAttendance={autoUpdatingAttendance}
+                reservationError={reservationErrors[reservation.reservationId]}
                 updateAttendanceStatus={updateAttendanceStatus}
                 updateReservationStatus={updateReservationStatus}
                 confirmPendingReservation={confirmPendingReservation}

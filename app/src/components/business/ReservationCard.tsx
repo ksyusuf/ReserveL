@@ -7,6 +7,7 @@ export default function ReservationCard({
   reservation,
   updatingContract,
   autoUpdatingAttendance,
+  reservationError,
   updateAttendanceStatus,
   updateReservationStatus,
   confirmPendingReservation,
@@ -23,6 +24,7 @@ export default function ReservationCard({
   reservation: Reservation;
   updatingContract: string | null;
   autoUpdatingAttendance: string | null;
+  reservationError?: string;
   updateAttendanceStatus: (reservationId: string, attendanceStatus: 'not_arrived' | 'arrived' | 'no_show', blockchainReservationId?: string) => Promise<void>;
   updateReservationStatus: (reservationId: string, status: 'confirmed' | 'cancelled') => Promise<void>;
   confirmPendingReservation: (reservationId: string) => Promise<void>;
@@ -74,6 +76,19 @@ export default function ReservationCard({
     <div
       className="relative bg-gradient-to-r from-gray-800/50 to-gray-900/50 border border-gray-700/50 rounded-xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-gray-600/50"
     >
+      {/* Rezervasyon Bazlı Hata Mesajı */}
+      {reservationError && (
+        <div className="mb-4 bg-red-500/10 border border-red-500/30 text-red-300 px-3 py-2 rounded-lg backdrop-blur-sm">
+          <div className="flex items-start">
+            <svg className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-red-300">{reservationError}</p>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col lg:flex-row justify-between gap-4 sm:gap-6">
         {/* SOL: Müşteri ve rezervasyon bilgileri */}
         <div className="flex-1 min-w-0">

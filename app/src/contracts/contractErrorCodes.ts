@@ -4,6 +4,7 @@ export enum ContractError {
   BusinessAlreadyRegistered = 1002,
   BusinessNotFound = 1003,
   Unauthorized = 1004,
+  InvalidStatusTransition  = 1005
 }
 
 // Hata kodu → Türkçe açıklama eşlemesi
@@ -12,6 +13,7 @@ export const contractErrorMessages: Record<ContractError, string> = {
   [ContractError.BusinessAlreadyRegistered]: "Bu işletme adı zaten kayıtlı.",
   [ContractError.BusinessNotFound]: "İşletme bulunamadı.",
   [ContractError.Unauthorized]: "Yetkisiz işlem.",
+  [ContractError.InvalidStatusTransition ]: "Geçersiz durum değişim talebi.",
 };
 
 // Hata kodunu Türkçeye çeviren fonksiyon

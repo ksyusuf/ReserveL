@@ -24,7 +24,7 @@ export default function BusinessLoginPage() {
       const contractResult = await getBusinessFromContract(businessName);
       
       if (!contractResult.success) {
-        setError('Kontrat bağlantısı başarısız');
+        setError(String(contractResult.error));
         setIsLoading(false);
         return;
       }

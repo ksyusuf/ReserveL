@@ -11,13 +11,13 @@ import {
   scValToNative,
 } from '@stellar/stellar-sdk';
 import { signTransaction, requestAccess } from '@stellar/freighter-api';
-import { getContractErrorMessage } from './contractErrorCodes';
+import { ContractError, contractErrorMessages, getContractErrorMessage } from './contractErrorCodes';
 
 const CONTRACT_ID = process.env.NEXT_PUBLIC_CONTRACT_ID!;
 const SOROBAN_RPC_URL = 'https://soroban-testnet.stellar.org';
 const axios = require('axios');
 
-export async function updateReservationStatusOnContract(reservationId: string, newStatus: 'Completed' | 'NoShow') {
+export async function updateReservationStatusOnContract(reservationId: number, newStatus: 'Completed' | 'NoShow') {
   console.log('🔍 updateReservationStatusOnContract başladı:', { reservationId, newStatus });
   try {
     const { address } = await requestAccess();
@@ -51,10 +51,17 @@ export async function updateReservationStatusOnContract(reservationId: string, n
     console.log('tx.toxdr ', tx.toXDR());
 
     
-    const simResult = await server.simulateTransaction(tx); // geçici olarak any
+    const simResult: any = await server.simulateTransaction(tx); // any :(
     console.log('Simülasyon sonucu:', simResult);
 
-    
+    // Eğer hata varsa, ona göre dönüş sağla
+    if (typeof simResult.error === 'string') {
+      const errorCode = extractErrorCode(simResult.error);
+      if (errorCode !== undefined) {
+        const errorMsg = contractErrorMessages[errorCode as ContractError] ?? 'Bilinmeyen kontrat hatası';
+        return { success: false, error: errorMsg, code: errorCode };
+      }
+    }
 
     const assembledTx = rpc.assembleTransaction(tx, simResult);
 
@@ -71,11 +78,18 @@ export async function updateReservationStatusOnContract(reservationId: string, n
 
     const txResponse = await server.sendTransaction(signedTx);
 
-    const anyone = await server.pollTransaction(txResponse.hash);
+    // pollTransaction içerisinde "Bad union switch: 4" hatası alıyoruz...
+    // const anyone = await server.pollTransaction(txResponse.hash);
+    let finalResult = await CustomPollTransaction(txResponse.hash);
 
-    console.log('🔍 Transaction başarılı:', anyone);
-    
-    return { success: true, hash: txResponse.hash };
+    if (finalResult && finalResult.data.result.status === 'SUCCESS') {
+      console.log('🔍 Transaction başarılı:', finalResult);
+      return { success: true, hash: txResponse.hash };
+    }else{
+      console.error('İşlem zaman aşımına uğradı veya başarıyla tamamlanamadı.');
+      return { success: false, hash: txResponse.hash };
+    }
+
   } catch (error) {
     console.error('❌ updateReservationStatusOnContract hatası:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Bilinmeyen hata' };
@@ -240,6 +254,12 @@ export async function registerBusinessOnContract(businessName: string, walletAdd
 }
 
 // İşletme bilgilerini kontrattan alma
+// Yardımcı: error string'den hata kodunu yakala
+function extractErrorCode(errorStr: string): number | null {
+  const match = errorStr.match(/Error\(Contract,\s*#(\d+)\)/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
 export async function getBusinessFromContract(businessName: string) {
   console.log('🔍 getBusinessFromContract başladı:', { businessName });
   
@@ -263,56 +283,52 @@ export async function getBusinessFromContract(businessName: string) {
         Operation.invokeContractFunction({
           contract: CONTRACT_ID,
           function: 'get_business',
-          args: [
-            nativeToScVal(businessName, { type: 'symbol' })
-          ],
+          args: [nativeToScVal(businessName, { type: 'symbol' })],
         })
       )
       .setTimeout(60)
       .build();
     
     console.log('🔍 Transaction simüle ediliyor...');
-    
-    const simResult = await server.simulateTransaction(tx);
+    const simResult: any = await server.simulateTransaction(tx);
     console.log('Simülasyon sonucu:', simResult);
     
+    // 1️⃣ Başarılı retval varsa
     if ('result' in simResult && simResult.result && 'retval' in simResult.result) {
       const contractResult = simResult.result.retval;
       if (typeof contractResult === 'object' && contractResult !== null) {
-        // Başarılı - Business struct geldi, önce native'e çevir
         const businessObj = scValToNative(contractResult);
         return {
           success: true,
-          businessName: businessName,
+          businessName,
           walletAddress: businessObj.wallet_address,
           isValid: true,
-          contractData: businessObj
-        };
-      } else if (typeof contractResult === 'number') {
-        // Hata kodunu Türkçe mesaja çevir
-        let errorMsg = 'Bilinmeyen kontrat hatası';
-        switch (contractResult) {
-          case 1001:
-            errorMsg = 'Kontrat zaten başlatılmış.'; break;
-          case 1002:
-            errorMsg = 'Bu işletme adı zaten kayıtlı.'; break;
-          case 1003:
-            errorMsg = 'İşletme bulunamadı.'; break;
-          case 1004:
-            errorMsg = 'Yetkisiz işlem.'; break;
-        }
-        return {
-          success: false,
-          error: errorMsg
+          contractData: businessObj,
         };
       }
     }
+
+    // 2️⃣ Eğer hata varsa, simResult.error içinden kodu parse et
+    if (typeof simResult.error === 'string') {
+      const errorCode = extractErrorCode(simResult.error);
+      if (errorCode  != undefined) {
+        const errorMsg = contractErrorMessages[errorCode as ContractError] ?? 'Bilinmeyen kontrat hatası';
+        return { success: false, error: errorMsg, code: errorCode };
+      }
+    }
+
+    // 3️⃣ Fallback
     return {
       success: false,
-      error: 'İşletme bilgileri alınamadı'
+      error: 'İşletme bilgileri doğru şekilde alınamadı',
     };
+    
   } catch (error) {
     console.error('❌ getBusinessFromContract hatası:', error);
-    throw new Error(`Kontrat bilgi alma hatası: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Kontrat bilgi alma hatası: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
   }
-} 
+}

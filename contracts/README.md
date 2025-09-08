@@ -16,11 +16,6 @@ Bu dizin, ReserveL projesinin Stellar Soroban akıllı kontratını içerir.
 # Test hesabı oluştur
 stellar keys generate alice
 
-# # Hesabın public key'ini al
-# TEST_ADDRESS=$(stellar keys address alice)
-# # Hesabı test tokenleri ile fonlarken detaylı bilgilendirir
-# curl "https://friendbot.stellar.org/?addr=$TEST_ADDRESS"
-
 # Hesabı test tokenleri ile fonla
 stellar keys fund alice
 
@@ -52,20 +47,20 @@ Deploy işlemi başarılı olduğunda, terminal size bir kontrat ID'si verecekti
 ## Kontrat ID
 
 ```
-CBQS73A4EVXHT7YGMZWMOMG7D46UHRPVNBR74ISMRJLGVVJUMLPT4YCE
+CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I
 ```
 
 ## Kontrat İşlemleri
 
 Kontratı test etmek ve işlemler yapmak için Stellar Expert üzerinden kontrat adresini kontrol edebilirsiniz:
-https://stellar.expert/explorer/testnet/contract/CBQS73A4EVXHT7YGMZWMOMG7D46UHRPVNBR74ISMRJLGVVJUMLPT4YCE
+https://stellar.expert/explorer/testnet/contract/CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I
 
 ### 4. Kontratı init Etme (initialize)
 ```bash
 stellar keys fund alice
 
 stellar contract invoke \
-  --id CBQS73A4EVXHT7YGMZWMOMG7D46UHRPVNBR74ISMRJLGVVJUMLPT4YCE \
+  --id CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I \
   --source-account alice \
   --network testnet \
   -- initialize \
@@ -75,7 +70,7 @@ stellar contract invoke \
 
 get business
 stellar contract invoke \
-  --id CBQS73A4EVXHT7YGMZWMOMG7D46UHRPVNBR74ISMRJLGVVJUMLPT4YCE \
+  --id CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I \
   --source-account alice \
   --network testnet \
   -- get_business \
@@ -83,7 +78,7 @@ stellar contract invoke \
 
 register business
 stellar contract invoke \
-  --id CBQS73A4EVXHT7YGMZWMOMG7D46UHRPVNBR74ISMRJLGVVJUMLPT4YCE \
+  --id CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I \
   --source-account alice \
   --network testnet \
   -- register_business \
@@ -100,7 +95,7 @@ stellar contract invoke \
 stellar cli ile örnek deploy;
 
 stellar contract invoke \
-  --id CBJVOQBNZ2ZRULWNRDWSF2A74747YQFEGZN4YAQQK44RCUTRG3THHEND \
+  --id CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I \
   --network testnet \
   --source-account alice \
   -- create_reservation \

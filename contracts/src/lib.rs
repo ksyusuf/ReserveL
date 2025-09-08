@@ -15,13 +15,14 @@ use soroban_sdk::{
 };
 
 #[contracterror]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)] // PartialOrd ve Ord eklendi
-#[repr(u32)] // Bu nitelik eklendi
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
 pub enum ContractError {
     AlreadyInitialized = 1001,
     BusinessAlreadyRegistered = 1002,
     BusinessNotFound = 1003,
-    Unauthorized = 1004
+    Unauthorized = 1004,
+    InvalidStatusTransition = 1005
 }
 
 #[contracttype]
@@ -181,7 +182,7 @@ impl ReserveLContract {
         env.storage().persistent().set(&reserves_key, &reservations);
     }
 
-    pub fn update_reservation_status(env: Env, reservation_id: u64, new_status_str: Symbol) {
+    pub fn update_reservation_status(env: Env, reservation_id: u64, new_status_str: Symbol) -> Result<(), ContractError> {
         let reserves_key = Symbol::new(&env, "reserves");
         let mut reservations: Map<u64, Reservation> = env
             .storage()
@@ -196,11 +197,12 @@ impl ReserveLContract {
         let new_status = match new_status_str {
             s if s == Symbol::new(&env, "Completed") => ReservationStatus::Completed,
             s if s == Symbol::new(&env, "NoShow") => ReservationStatus::NoShow,
+            s if s == Symbol::new(&env, "Cancelled") => ReservationStatus::Cancelled,
             _ => panic!("Invalid status: "),
         };
 
         if reservation.status != ReservationStatus::Confirmed {
-            panic!("Cannot update status for a non-confirmed reservation");
+          return Err(ContractError::InvalidStatusTransition);
         }
 
         match new_status {
@@ -234,15 +236,20 @@ impl ReserveLContract {
                 log!(&env, "🔍 Marking reservation ID {} as 'NoShow'.", reservation_id);
                 reservation.status = new_status.clone();
             }
+            ReservationStatus::Cancelled => {
+              log!(&env, "🔍 Marking reservation ID {} as 'Cancelled'.", reservation_id);
+              reservation.status = new_status.clone();
+            }
             _ => {
-                log!(&env, " Invalid status update for reservation ID {}. The status must be either 'Completed' or 'NoShow'.", reservation_id);
-                panic!(" Invalid status update for reservation ID {}. The status must be either 'Completed' or 'NoShow'.", reservation_id);
+                log!(&env, " Invalid status update for reservation ID {}. The status must be either 'Completed' or 'NoShow' or 'Cancelled'.", reservation_id);
+                panic!(" Invalid status update for reservation ID {}. The status must be either 'Completed' or 'NoShow' or 'Cancelled'.", reservation_id);
             }
         }
 
         // Rezervasyonu güncelle
         reservations.set(reservation_id, reservation);
         env.storage().persistent().set(&reserves_key, &reservations);
+        Ok(())
     }
 
     pub fn get_reservation(env: Env, reservation_id: u64) -> Option<Reservation> {

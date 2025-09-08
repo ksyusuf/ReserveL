@@ -32,7 +32,7 @@ yarn-error.log*
 .env.production.local
 
 # Rust
-/target/
+target/
 **/*.rs.bk
 Cargo.lock
 
