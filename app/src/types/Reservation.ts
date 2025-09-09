@@ -9,6 +9,7 @@ export interface Reservation {
   confirmationStatus: 'pending' | 'confirmed' | 'cancelled';
   loyaltyTokensSent: boolean;
   blockchainReservationId: string;
+  confirmationToken: string;
   notes?: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
 } 

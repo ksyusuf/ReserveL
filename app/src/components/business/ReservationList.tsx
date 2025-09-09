@@ -30,8 +30,6 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
     setEditingNotes,
     noteText,
     setNoteText,
-    copiedId,
-    handleCopyUrl,
   } = useReservations({ onReservationCreated, lastCreatedReservationId });
 
   if (isLoading) {
@@ -133,8 +131,6 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
                 noteText={noteText}
                 setNoteText={setNoteText}
                 updateReservationNotes={updateReservationNotes}
-                copiedId={copiedId}
-                handleCopyUrl={handleCopyUrl}
                 NoteEditor={NoteEditor}
               />
             </div>

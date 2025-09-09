@@ -13,28 +13,9 @@ export default function useReservations({ onReservationCreated, lastCreatedReser
   const [updatingContract, setUpdatingContract] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [autoUpdatingAttendance, setAutoUpdatingAttendance] = useState<string | null>(null);
   const [reservationErrors, setReservationErrors] = useState<Record<string, string>>({});
   const businessSession = useAppStore((s) => s.businessSession);
-
-  // Yoruma özel URL oluşturucu
-  const getApprovalUrl = useCallback((reservationId: string) => {
-    const env = process.env.NEXT_PUBLIC_ENVIRONMENT;
-    const baseUrl =
-      env === 'Production'
-        ? 'https://reserve-l.vercel.app'
-        : 'http://localhost:3000';
-    return `${baseUrl}/customer-page?reservationId=${reservationId}`;
-  }, []);
-
-  // Panoya kopyalama fonksiyonu
-  const handleCopyUrl = useCallback((reservationId: string) => {
-    const url = getApprovalUrl(reservationId);
-    navigator.clipboard.writeText(url);
-    setCopiedId(reservationId);
-    setTimeout(() => setCopiedId(null), 1500);
-  }, [getApprovalUrl]);
 
   const fetchReservations = async () => {
     try {
@@ -321,7 +302,5 @@ export default function useReservations({ onReservationCreated, lastCreatedReser
     setEditingNotes,
     noteText,
     setNoteText,
-    copiedId,
-    handleCopyUrl,
   };
 } 

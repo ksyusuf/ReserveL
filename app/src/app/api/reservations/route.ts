@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { connectDB, Reservation } from '@/lib/db';
-import { generateReservationId, generateConfirmationToken } from '@/lib/utils';
+import { generateReservationId, generateConfirmationToken, createConfirmationUrl } from '@/lib/utils';
 
 // Bu route, rezervasyon sisteminin ana CRUD işlemlerini yönetir:
 // POST: Yeni rezervasyon oluşturur (müşteri adı, telefon, tarih, saat, kişi sayısı, işletme ID gibi bilgilerle)
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     }
 
     const confirmationToken = generateConfirmationToken();
-    const confirmationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/customer-page?conf=${confirmationToken}`;
+    const confirmationUrl = createConfirmationUrl(confirmationToken);
 
     const reservation = new Reservation({
       ...reservationData,
@@ -144,7 +144,6 @@ export async function GET(request: Request) {
     const reservations = await Reservation.find(query).sort({ createdAt: -1 });
     console.log('Found reservations:', reservations.length); // Debug için
     
-    // attendanceStatus alanını da dahil et
     const formattedReservations = reservations.map(reservation => ({
       reservationId: reservation.reservationId,
       customerName: reservation.customerName,
@@ -154,6 +153,7 @@ export async function GET(request: Request) {
       numberOfPeople: reservation.numberOfPeople,
       attendanceStatus: reservation.attendanceStatus || 'not_arrived',
       confirmationStatus: reservation.confirmationStatus,
+      confirmationToken: reservation.confirmationToken,
       loyaltyTokensSent: reservation.loyaltyTokensSent,
       blockchainReservationId: reservation.blockchainReservationId,
       businessId: reservation.businessId,

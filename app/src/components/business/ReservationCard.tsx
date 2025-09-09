@@ -1,7 +1,18 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import Button from '../ui/Button';
 import { formatDate, formatTime } from '@/lib/utils';
 import { Reservation } from '@/types/Reservation';
+import { createConfirmationUrl } from '@/lib/utils';
+
+// const [copiedId, setCopiedId] = useState<string | null>(null);
+
+// Panoya kopyalama fonksiyonu
+const handleCopyUrl = (confirmationToken: string) => {
+  const url =  createConfirmationUrl(confirmationToken); // createConfirmationUrl'in döndürdüğü değeri al
+  navigator.clipboard.writeText(url);
+  // setCopiedId(reservationId);
+  // setTimeout(() => setCopiedId(null), 1500);
+};
 
 export default function ReservationCard({
   reservation,
@@ -17,8 +28,6 @@ export default function ReservationCard({
   noteText,
   setNoteText,
   updateReservationNotes,
-  copiedId,
-  handleCopyUrl,
   NoteEditor,
 }: {
   reservation: Reservation;
@@ -34,8 +43,6 @@ export default function ReservationCard({
   noteText: string;
   setNoteText: (text: string) => void;
   updateReservationNotes: (reservationId: string, notes: string) => Promise<void>;
-  copiedId: string | null;
-  handleCopyUrl: (blockchainReservationId: string) => void;
   NoteEditor: React.ComponentType<{
     reservation: Reservation;
     editingNotes: string | null;
@@ -43,8 +50,6 @@ export default function ReservationCard({
     setNoteText: (text: string) => void;
     updateReservationNotes: (reservationId: string, notes: string) => Promise<void>;
     handleCancelEdit: () => void;
-    handleCopyUrl: (blockchainReservationId: string) => void;
-    copiedId: string | null;
   }>;
 }) {
   // Yorum ve log satırlarını silme!
@@ -133,17 +138,17 @@ export default function ReservationCard({
             <button
               type="button"
               className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-200 border border-blue-500/40 rounded px-2 py-1 bg-gray-900/70 backdrop-blur transition"
-              onClick={() => handleCopyUrl(reservation.blockchainReservationId)}
+              onClick={() => handleCopyUrl(reservation.confirmationToken)}
               title="Onay URL'sini kopyala"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16h8a2 2 0 002-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v6a2 2 0 002 2zm0 0v2a2 2 0 002 2h4a2 2 0 002-2v-2" /></svg>
               Onay URL
             </button>
-            {copiedId === reservation.blockchainReservationId && (
+            {/* {copiedId === reservation.blockchainReservationId && (
               <div className="absolute left-1/2 -translate-x-1/2 -top-8 bg-gray-800 text-white text-xs px-3 py-1 rounded shadow z-20 animate-fade-in">
                 Kopyalandı!
               </div>
-            )}
+            )} */}
           </div>
         </div>
         {/* SAĞ: Not kutusu */}
@@ -157,8 +162,6 @@ export default function ReservationCard({
                 setNoteText={setNoteText}
                 updateReservationNotes={updateReservationNotes}
                 handleCancelEdit={handleCancelEdit}
-                handleCopyUrl={handleCopyUrl}
-                copiedId={copiedId}
               />
             ) : reservation.notes ? (
               <div className="relative p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg w-full flex flex-col justify-between min-h-[48px] sm:min-h-[60px] lg:min-h-[80px] max-h-[120px] lg:max-h-[160px]">

@@ -5,15 +5,6 @@ export const cn = (...inputs: ClassValue[]) => {
   return twMerge(clsx(inputs));
 };
 
-// Statik işletme adları listesi
-export const BUSINESS_NAMES = [
-  'Le Petit Bistrot',
-  'Sakura Sushi Bar',
-  'Terraza Mediterranea',
-  'Golden Dragon Restaurant',
-  'Café de Paris'
-];
-
 export const generateReservationId = (): string => {
   const timestamp = Date.now().toString(36);
   const randomStr = Math.random().toString(36).substring(2, 8);
@@ -25,6 +16,10 @@ export const generateConfirmationToken = (): string => {
   const randomStr = Math.random().toString(36).substring(2, 8);
   return `CONF-${timestamp}-${randomStr}`.toUpperCase();
 };
+
+export const createConfirmationUrl = (confirmationToken: string): string => {
+  return `${process.env.NEXT_PUBLIC_APP_URL}/customer-page?conf=${confirmationToken}`;
+}
 
 export const formatDate = (date: Date | string | undefined | null): string => {
   if (!date) return 'Belirtilmemiş';
