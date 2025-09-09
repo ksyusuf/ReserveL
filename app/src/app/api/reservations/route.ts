@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { connectDB, Reservation } from '@/lib/db';
-import { generateReservationId, generateConfirmationToken, getRandomBusinessName } from '@/lib/utils';
+import { generateReservationId, generateConfirmationToken } from '@/lib/utils';
 
 // Bu route, rezervasyon sisteminin ana CRUD işlemlerini yönetir:
 // POST: Yeni rezervasyon oluşturur (müşteri adı, telefon, tarih, saat, kişi sayısı, işletme ID gibi bilgilerle)
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     console.log('Gelen rezervasyon verisi:', JSON.stringify(body, null, 2));
     
     // Gerekli alanların kontrolü
-    const requiredFields = ['customerName', 'customerPhone', 'date', 'time', 'numberOfPeople', 'businessId', 'customerId'];
+    const requiredFields = ['customerName', 'customerPhone', 'date', 'time', 'numberOfPeople', 'businessId'];
     const missingFields = requiredFields.filter(field => !body[field]);
     
     if (missingFields.length > 0) {
@@ -36,6 +36,7 @@ export async function POST(request: Request) {
       customerPhone: body.customerPhone?.trim() || 'Telefon',
       date: body.date?.trim() || '',
       time: body.time?.trim() || '',
+      businessName: body.businessName?.trim(),
       numberOfPeople: parseInt(body.numberOfPeople) || 1,
       businessId: body.businessId?.trim() || '',
       customerId: body.customerId?.trim() || 'anonymous',
@@ -49,7 +50,6 @@ export async function POST(request: Request) {
       transactionHash: body.transactionHash || null,
     };
 
-    console.log('Gelen body verisi:', JSON.stringify(body, null, 2));
     console.log('İşlenmiş reservationData:', JSON.stringify(reservationData, null, 2));
 
     // Tarih ve saat doğrulama
@@ -74,20 +74,15 @@ export async function POST(request: Request) {
     }
 
     const confirmationToken = generateConfirmationToken();
-    const confirmationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/confirm/${confirmationToken}`;
-    
-    // Rastgele işletme adı seç
-    const randomBusinessName = getRandomBusinessName();
-    
+    const confirmationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/customer-page?conf=${confirmationToken}`;
+
     const reservation = new Reservation({
       ...reservationData,
       reservationId: generateReservationId(),
       confirmationToken,
-      businessName: randomBusinessName,
     });
     
     console.log('Oluşturulan rezervasyon objesi:', JSON.stringify(reservation, null, 2));
-    console.log('Seçilen işletme adı:', randomBusinessName);
     console.log('Rezervasyon kaydediliyor...');
     
     await reservation.save();
@@ -99,6 +94,7 @@ export async function POST(request: Request) {
       ...reservation.toObject(),
       confirmationUrl,
     }, { status: 201 });
+    
   } catch (error) {
     console.error('=== Rezervasyon Oluşturma Hatası ===');
     console.error('Hata detayı:', error);
@@ -122,6 +118,7 @@ export async function GET(request: Request) {
     
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    const businessId = searchParams.get('businessId');
     
     if (id) {
       console.log('Fetching reservation with ID:', id); // Debug için
@@ -135,8 +132,16 @@ export async function GET(request: Request) {
       return NextResponse.json(reservation);
     }
     
-    console.log('Fetching all reservations...'); // Debug için
-    const reservations = await Reservation.find().sort({ createdAt: -1 });
+    // BusinessId varsa sadece ilgili işletmenin rezervasyonlarını getir
+    const query: any = {};
+    if (businessId) {
+      query.businessId = businessId;
+      console.log('Fetching reservations for businessId:', businessId);
+    } else {
+      console.log('Fetching all reservations...'); // Debug için
+    }
+
+    const reservations = await Reservation.find(query).sort({ createdAt: -1 });
     console.log('Found reservations:', reservations.length); // Debug için
     
     // attendanceStatus alanını da dahil et

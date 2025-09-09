@@ -6,18 +6,21 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
-    const { businessName } = body;
+    const { businessName, walletAddress } = body;
 
-    // Validasyon
-    if (!businessName) {
+    // Validasyon: businessName veya walletAddress'ten en az biri gerekli
+    if (!businessName && !walletAddress) {
       return NextResponse.json(
-        { message: 'İşletme adı gereklidir' },
+        { message: 'İşletme adı veya cüzdan adresi gereklidir' },
         { status: 400 }
       );
     }
 
     // İşletmeyi bul (şifre hariç)
-    const business = await Business.findOne({ businessName }).select('-password');
+    const query: any = {};
+    if (businessName) query.businessName = businessName;
+    if (walletAddress) query.walletAddress = walletAddress;
+    const business = await Business.findOne(query).select('-password');
     if (!business) {
       return NextResponse.json(
         { message: 'İşletme bulunamadı' },

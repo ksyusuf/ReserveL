@@ -124,7 +124,7 @@ function parseReservation(scval: any, reservationId: string) {
 
 function CustomerPage() {
   const searchParams = useSearchParams();
-  const reservationId = searchParams.get('reservationId');
+  const confirmationToken = searchParams.get('conf');
   const [reservation, setReservation] = useState<any | null>(null);
   const [reservationStatus, setReservationStatus] = useState<any | null>(null);
   const [blockchainReservation, setBlockchainReservation] = useState<any | null>(null);
@@ -142,77 +142,25 @@ function CustomerPage() {
   }
 
   // Rezervasyon durumunu API'den al
-  const fetchReservationStatus = async (id: string) => {
+  const fetchReservationStatus = async (confirmationTokenRequest: string) => {
     try {
-      const response = await fetch(`/api/reservations/${id}`);
+      const response = await fetch(`/api/reservations/${confirmationTokenRequest}`);
       let data;
       if (response.ok) {
         data = await response.json();
-        console.log('API\'den gelen rezervasyon verisi:', data);
         setReservationStatus(data.reservation);
+        return data.reservation; // rezervasyon verisini döndür
       } else {
-        console.warn('Rezervasyon durumu alınamadı, varsayılan değerler kullanılıyor');
-        setReservationStatus({
-          reservationId: id,
-          businessId: '',
-          businessName: 'Restoran Adı',
-          customerId: 'anonymous',
-          customerName: 'Müşteri Adı',
-          date: '',
-          time: '',
-          numberOfPeople: 0,
-          customerPhone: 'Telefon',
-          notes: '',
-          status: 'pending',
-          attendanceStatus: 'not_arrived',
-          confirmationStatus: 'pending',
-          loyaltyTokensSent: false,
-          customerAddress: null,
-          transactionHash: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-      }
-      // Otomatik no_show kontrolü (global fonksiyon ile)
-      if (data && data.reservation) {
-        const updatedIds = await autoNoShowCheck(data.reservation);
-        if (updatedIds.length > 0) {
-          setLoading(true);
-          // Güncel veriyi tekrar çek
-          const updatedResponse = await fetch(`/api/reservations/${id}`);
-          if (updatedResponse.ok) {
-            const updatedData = await updatedResponse.json();
-            setReservationStatus(updatedData.reservation);
-          }
-          setLoading(false);
-        }
+        console.warn('Rezervasyon durumu alınamadı...');
       }
     } catch (error) {
       console.warn('Rezervasyon durumu alınırken hata:', error);
-      setReservationStatus({
-        reservationId: id,
-        businessId: '',
-        businessName: 'Restoran Adı',
-        customerId: 'anonymous',
-        customerName: 'Müşteri Adı',
-        date: '',
-        time: '',
-        numberOfPeople: 0,
-        customerPhone: 'Telefon',
-        notes: '',
-        status: 'pending',
-        attendanceStatus: 'not_arrived',
-        confirmationStatus: 'pending',
-        loyaltyTokensSent: false,
-        customerAddress: null,
-        transactionHash: null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
+      return null;
     }
   };
 
-  // Blockchain'den rezervasyon durumunu al
+
+  // ... (existing fetchBlockchainReservation function remains unchanged) ...
   const fetchBlockchainReservation = async (reservationId: string, address: string) => {
     try {
       const server = new rpc.Server(SOROBAN_RPC_URL);
@@ -256,15 +204,31 @@ function CustomerPage() {
       setReservation(null);
       setReservationStatus(null);
       setBlockchainReservation(null);
-      if (!reservationId) {
-        setError('Rezervasyon ID bulunamadı!');
+      if (!confirmationToken) {
+        setError('Rezervasyon onay kodu bulunamadı!');
         setLoading(false);
         return;
       }
 
       try {
-        // Önce rezervasyon durumunu al
-        await fetchReservationStatus(reservationId);
+        // Önce rezervasyon durumunu veritabanından confirmationToken ile al
+        const dbReservation = await fetchReservationStatus(confirmationToken);
+        if (!dbReservation) {
+          setError('Rezervasyon bulunamadı veya geçersiz.');
+          setLoading(false);
+          return;
+        }
+
+        // Otomatik no_show kontrolü (global fonksiyon ile)
+        const updatedIds = await autoNoShowCheck(dbReservation);
+        if (updatedIds.length > 0) {
+          // Güncel veriyi tekrar çek
+          const updatedResponse = await fetch(`/api/reservations/${confirmationToken}`);
+          if (updatedResponse.ok) {
+            const updatedData = await updatedResponse.json();
+            setReservationStatus(updatedData.reservation);
+          }
+        }
 
         // Kullanıcıdan cüzdan bağlantısı iste
         const { address } = await requestAccess();
@@ -275,10 +239,10 @@ function CustomerPage() {
         }
         setWalletAddress(address);
 
-        // Blockchain'den rezervasyon durumunu al
-        const parsedReservation = await fetchBlockchainReservation(reservationId, address);
+        // Blockchain'den rezervasyon durumunu, veritabanından aldığımız reservationId ile al
+        const parsedReservation = await fetchBlockchainReservation(dbReservation.blockchainReservationId, address);
         if (!parsedReservation) {
-          setError('Rezervasyon bulunamadı veya silinmiş.');
+          setError('Blockchain üzerinde rezervasyon bulunamadı.');
           setLoading(false);
           return;
         }
@@ -290,14 +254,15 @@ function CustomerPage() {
       }
     };
     fetchReservation();
-  }, [reservationId]);
+  }, [confirmationToken]);
 
   // Blockchain durumunu periyodik olarak güncelle
   useEffect(() => {
-    if (!reservationId || !walletAddress || !blockchainReservation) return;
+    // reservationStatus verisinden reservationId'yi al
+    if (!reservationStatus?.reservationId || !walletAddress || !blockchainReservation) return;
 
     const updateBlockchainStatus = async () => {
-      const parsedReservation = await fetchBlockchainReservation(reservationId, walletAddress);
+      const parsedReservation = await fetchBlockchainReservation(reservationStatus.blockchainReservationId, walletAddress);
       if (parsedReservation && parsedReservation.status !== blockchainReservation.status) {
         setBlockchainReservation(parsedReservation);
       }
@@ -310,19 +275,19 @@ function CustomerPage() {
     const interval = setInterval(updateBlockchainStatus, 10000);
 
     return () => clearInterval(interval);
-  }, [reservationId, walletAddress, blockchainReservation]);
+  }, [reservationStatus, walletAddress, blockchainReservation]);
 
   const handleConfirmationSuccess = async () => {
     // API'den güncel rezervasyon durumunu al
-    if (reservationId) {
-      await fetchReservationStatus(reservationId);
-    }
+    if (confirmationToken) {
+      const updatedReservation = await fetchReservationStatus(confirmationToken);
 
-    // Blockchain'den güncel durumu al
-    if (reservationId && walletAddress) {
-      const parsedReservation = await fetchBlockchainReservation(reservationId, walletAddress);
-      if (parsedReservation) {
-        setBlockchainReservation(parsedReservation);
+      // Blockchain'den güncel durumu al
+      if (updatedReservation && walletAddress) {
+        const parsedReservation = await fetchBlockchainReservation(updatedReservation.blockchainReservationId, walletAddress);
+        if (parsedReservation) {
+          setBlockchainReservation(parsedReservation);
+        }
       }
     }
   };
@@ -432,7 +397,7 @@ function CustomerPage() {
                   </div>
                 </div>
                 <PaymentSection 
-                  reservationId={reservationId!}
+                  reservationId={reservationStatus.blockchainReservationId}
                   businessId={reservationStatus.businessId}
                   reservationStatus={reservationStatus}
                   onSuccess={handleConfirmationSuccess}
@@ -482,4 +447,4 @@ export default function Page() {
       <CustomerPage />
     </Suspense>
   );
-} 
+}

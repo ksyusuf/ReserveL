@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import ToastContainer from '@/components/ui/ToastContainer';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -31,6 +32,7 @@ export default function RootLayout({
           <main className="relative z-10 flex items-center justify-center min-h-screen p-4">
             {children}
           </main>
+          <ToastContainer />
         </div>
       </body>
     </html>

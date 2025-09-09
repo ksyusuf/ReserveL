@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { connectWallet } from '@/lib/wallet';
-import { registerBusinessOnContract } from '@/contracts/contractActions';
+import { registerBusinessOnContract, getBusinessFromContract } from '@/contracts/contractActions';
 
 export default function BusinessRegisterPage() {
   const [formData, setFormData] = useState({
@@ -34,7 +34,7 @@ export default function BusinessRegisterPage() {
     setSuccess('');
 
     try {
-      // 1. Cüzdan bağlantısı
+      // 1) Cüzdan bağlantısı
       setSuccess('Cüzdan bağlanıyor...');
       const walletResult = await connectWallet();
       
@@ -42,40 +42,70 @@ export default function BusinessRegisterPage() {
         throw new Error('Cüzdan bağlantısı başarısız');
       }
 
-      // 2. Kontrat kayıt işlemi
-      setSuccess('Kontrat kayıt işlemi başlatılıyor...');
-      const contractResult = await registerBusinessOnContract(formData.businessName, walletResult.address);
+      // 2) Veritabanında var mı? (önce cüzdan, sonra isim ayrı ayrı)
+      setSuccess('Veritabanı kontrol ediliyor...');
+      const dbCheckByWallet = await fetch('/api/business/get-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: walletResult.address }),
+      });
+      if (dbCheckByWallet.ok) {
+        setSuccess('');
+        throw new Error('Bu cüzdan adresi zaten bir işletmeye ait.');
+      }
 
+      const dbCheckByName = await fetch('/api/business/get-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businessName: formData.businessName }),
+      });
+      if (dbCheckByName.ok) {
+        setSuccess('');
+        throw new Error('Bu işletme adı zaten kullanımda.');
+      }
+
+      // 3) Kontratta var mı?
+      setSuccess('Kontrat kontrol ediliyor...');
+      const getResult = await getBusinessFromContract(formData.businessName);
+      if (getResult && getResult.success === true && getResult.walletAddress) {
+        setSuccess('');
+        throw new Error('Bu işletme adı zaten kontratta kayıtlı. Yetkililer ile iletişime geçin.');
+      }
+
+      // 4) Kontrata kayıt
+      setSuccess('Kontrata kayıt ediliyor...');
+      const contractResult = await registerBusinessOnContract(formData.businessName, walletResult.address);
       if (!contractResult.success) {
         setSuccess('');
         throw new Error(contractResult.registrationHash);
       }
 
-      // 3. Veritabanına kayıt
+      // 5) Veritabanına kayıt
       setSuccess('Veritabanına kaydediliyor...');
       const response = await fetch('/api/business/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
           walletAddress: walletResult.address,
           registrationHash: contractResult.registrationHash,
         }),
       });
-
       const data = await response.json();
-
-      if (response.ok) {
-        setSuccess('İşletme kaydı başarıyla tamamlandı! Giriş sayfasına yönlendiriliyorsunuz...');
-        setTimeout(() => {
-          router.push('/business-login');
-        }, 2000);
-      } else {
-        setError(data.message || 'Kayıt başarısız');
+      if (!response.ok) {
+        throw new Error(data.message || 'Kayıt başarısız');
       }
+
+      setSuccess('İşletme kaydı başarıyla tamamlandı! Giriş sayfasına yönlendiriliyorsunuz...');
+      try {
+        localStorage.setItem('prefillBusinessName', formData.businessName);
+      } catch {}
+      setTimeout(() => {
+        router.push('/business-login');
+      }, 1500);
     } catch (error) {
+      // Hata durumunda başarı mesajını kapat
+      setSuccess('');
       setError(`Kayıt hatası: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsLoading(false);

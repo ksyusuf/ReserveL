@@ -1,15 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getBusinessFromContract } from '@/contracts/contractActions';
+import { checkWalletConnection } from '@/lib/wallet';
+import { useAppStore } from '@/store/useAppStore';
 
 export default function BusinessLoginPage() {
   const [businessName, setBusinessName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const setBusinessSession = useAppStore((s) => s.setBusinessSession);
+  const setWalletConnected = useAppStore((s) => s.setWalletConnected);
+  const setWalletAddress = useAppStore((s) => s.setWalletAddress);
+  const setWalletError = useAppStore((s) => s.setWalletError);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,7 +23,34 @@ export default function BusinessLoginPage() {
     setError('');
 
     try {
-      // 1. Kontrattan işletme bilgilerini al
+      // 1. Freighter cüzdanından adres al ve store'a yaz
+      const walletStatus = await checkWalletConnection();
+      if (!walletStatus.connected || !walletStatus.address) {
+        setWalletConnected(false);
+        setWalletAddress(null);
+        setWalletError(walletStatus.error ?? 'Cüzdan bağlı değil');
+        setError('Cüzdan bağlı değil. Lütfen Freighter ile bağlanın.');
+        setIsLoading(false);
+        return;
+      }
+      setWalletConnected(true);
+      setWalletAddress(walletStatus.address ?? null);
+      setWalletError(null);
+
+      // 2. Veritabanından işletmeyi hem isim hem cüzdanla doğrula
+      const businessResponse = await fetch('/api/business/get-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businessName, walletAddress: walletStatus.address }),
+      });
+      if (!businessResponse.ok) {
+        setError('İşletme bulunamadı veya cüzdan adresi eşleşmiyor');
+        setIsLoading(false);
+        return;
+      }
+      const businessData = await businessResponse.json();
+
+      // 3. Kontrattan işletme bilgilerini al
       console.log('🔍 Kontrattan işletme bilgileri alınıyor...');
       console.log('🔍 İşletme adı:', businessName);
       
@@ -30,35 +63,21 @@ export default function BusinessLoginPage() {
       }
       
       console.log('✅ Kontrat bilgileri alındı:', contractResult);
-      
-      // 2. Veritabanından işletme bilgilerini al
-      const businessResponse = await fetch('/api/business/get-info', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ businessName }),
-      });
-
-      if (!businessResponse.ok) {
-        setError('İşletme bulunamadı');
-        setIsLoading(false);
-        return;
-      }
-
-      const businessData = await businessResponse.json();
       console.log('🔍 Veritabanı bilgileri alındı:', businessData);
-      
-      // 3. Cüzdan adresi eşleştirmesi
+
+      // 4. Hem DB hem kontrat adresi ile Freighter adresini eşleştir
       if (contractResult.walletAddress !== businessData.walletAddress) {
         setError('Cüzdan adresi eşleşmiyor');
         setIsLoading(false);
         return;
       }
+      if (walletStatus.address !== businessData.walletAddress) {
+        setError('Tarayıcı cüzdan adresi bu işletmeyle eşleşmiyor');
+        setIsLoading(false);
+        return;
+      }
       
-      console.log('✅ Cüzdan adresi eşleşti');
-      
-      // 4. Session bilgisini localStorage'a kaydet
+      // 5. Session bilgisini localStorage'a ve store'a kaydet
       const sessionData = {
         businessId: businessData._id,
         businessName: businessData.businessName,
@@ -66,8 +85,7 @@ export default function BusinessLoginPage() {
         loginTime: new Date().toISOString()
       };
       localStorage.setItem('businessSession', JSON.stringify(sessionData));
-      
-      console.log('✅ Giriş başarılı, session kaydedildi');
+      setBusinessSession({ name: sessionData.businessName, walletAddress: sessionData.walletAddress });
       
       // Giriş başarılı, dashboard'a yönlendir
       router.push('/business-dashboard');
@@ -75,10 +93,19 @@ export default function BusinessLoginPage() {
     } catch (error) {
       console.error('❌ Giriş hatası:', error);
       setError('Bir hata oluştu. Lütfen tekrar deneyin.');
-    } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('prefillBusinessName');
+      if (saved) {
+        setBusinessName(saved);
+        localStorage.removeItem('prefillBusinessName');
+      }
+    } catch {}
+  }, []);
 
   return (
     <div className="w-full max-w-4xl mx-auto">

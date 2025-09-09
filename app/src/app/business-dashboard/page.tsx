@@ -4,20 +4,17 @@ import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ReservationForm from '@/components/business/ReservationForm';
 import ReservationList from '@/components/business/ReservationList';
-import { getRandomBusinessName } from '@/lib/utils';
+import { useAppStore } from '@/store/useAppStore';
 
 export default function BusinessDashboard() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [lastCreatedReservationId, setLastCreatedReservationId] = useState<string | null>(null);
-  const [businessInfo, setBusinessInfo] = useState<{
-    name: string;
-    walletAddress: string;
-  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const businessSession = useAppStore((s) => s.businessSession);
+  const setBusinessSession = useAppStore((s) => s.setBusinessSession);
+  const logout = useAppStore((s) => s.logout);
   
-  const businessName = useMemo(() => getRandomBusinessName(), []);
-
   useEffect(() => {
     // Session kontrolü (gerçek uygulamada JWT veya session kullanılabilir)
     const checkSession = async () => {
@@ -31,9 +28,9 @@ export default function BusinessDashboard() {
         }
 
         const session = JSON.parse(sessionData);
-        setBusinessInfo({
+        setBusinessSession({
           name: session.businessName,
-          walletAddress: session.walletAddress
+          walletAddress: session.walletAddress,
         });
       } catch (error) {
         console.error('Session kontrolü hatası:', error);
@@ -44,10 +41,11 @@ export default function BusinessDashboard() {
     };
 
     checkSession();
-  }, [router]);
+  }, [router, setBusinessSession]);
 
   const handleLogout = () => {
     localStorage.removeItem('businessSession');
+    logout();
     router.push('/business-login');
   };
 
@@ -96,10 +94,10 @@ export default function BusinessDashboard() {
               </div>
               
               <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
-                {businessInfo && (
+                {businessSession && (
                   <div className="text-left sm:text-right w-full sm:w-auto">
-                    <p className="text-white font-semibold text-sm sm:text-base">{businessInfo.name}</p>
-                    <p className="text-gray-400 text-xs sm:text-sm font-mono">{businessInfo.walletAddress.slice(0, 8)}...{businessInfo.walletAddress.slice(-6)}</p>
+                    <p className="text-white font-semibold text-sm sm:text-base">{businessSession.name}</p>
+                    <p className="text-gray-400 text-xs sm:text-sm font-mono">{businessSession.walletAddress.slice(0, 8)}...{businessSession.walletAddress.slice(-6)}</p>
                   </div>
                 )}
                 <button

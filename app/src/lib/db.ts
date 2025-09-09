@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import { getRandomBusinessName } from './utils';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -137,12 +136,10 @@ const ReservationSchema = new mongoose.Schema({
   businessName: {
     type: String,
     required: true,
-    default: getRandomBusinessName,
   },
   customerId: {
     type: String,
-    required: true,
-    default: 'anonymous',
+    required: false,
   },
   customerName: {
     type: String,

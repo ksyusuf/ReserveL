@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAppStore } from '@/store/useAppStore';
 import * as StellarSdk from '@stellar/stellar-sdk';
 import { signTransaction } from '@stellar/freighter-api';
 import { requestAccess } from '@stellar/freighter-api';
@@ -36,6 +37,8 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
   const [loading, setLoading] = useState(false);
   const [reservationId, setReservationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const businessSession = useAppStore(s => s.businessSession);
+  const [responseConfirmUrl, setResponseConfirmUrl] = useState<string | null>(null);
 
   function getReservationTimestamp(date: string, time: string) {
     if (!date || !time) return 0;
@@ -53,13 +56,13 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
     try {
       // Form verilerini doğrula ve temizle
       const validatedData = {
-        customerName: formData.customerName?.trim() || 'Müşteri Adı',
-        customerPhone: formData.customerPhone?.trim() || 'Telefon',
-        date: formData.date?.trim() || '',
-        time: formData.time?.trim() || '',
-        notes: formData.notes?.trim() || '',
-        customerId: formData.customerId?.trim() || 'anonymous',
-        partySize: Math.max(1, parseInt(formData.partySize.toString()) || 1),
+        customerName: formData.customerName?.trim(),
+        customerPhone: formData.customerPhone?.trim(),
+        date: formData.date?.trim(),
+        time: formData.time?.trim(),
+        notes: formData.notes?.trim(),
+        customerId: formData.customerId?.trim(),
+        partySize: Math.max(1, parseInt(formData.partySize.toString())),
       };
 
       // Tarih ve saat doğrulama
@@ -196,6 +199,7 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
           time: validatedData.time,
           numberOfPeople: validatedData.partySize,
           businessId: address,
+          businessName: businessSession?.name,
           customerId: validatedData.customerId,
           notes: validatedData.notes,
           blockchainReservationId: id.toString(),
@@ -215,14 +219,14 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
             body: JSON.stringify(reservationData),
           });
 
+          const jsonData = await response.json();
           if (!response.ok) {
-            const errorData = await response.json();
+            const errorData = jsonData;
             console.error('Veritabanı kayıt hatası:', errorData);
             throw new Error(`Veritabanına kayıt yapılamadı: ${errorData.error || 'Bilinmeyen hata'}`);
           }
-
-          const savedReservation = await response.json();
-          console.log('Rezervasyon veritabanına başarıyla kaydedildi:', savedReservation);
+          setResponseConfirmUrl(jsonData.confirmationUrl || null);
+          console.log('Rezervasyon veritabanına başarıyla kaydedildi:', jsonData);
           
           // Başarılı olduğunda callback'i çağır ve formu temizle
           if (onReservationCreated) {
@@ -326,11 +330,6 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
               className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-300 backdrop-blur-sm text-sm sm:text-base"
               required
             />
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 sm:pr-4">
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
           </div>
         </div>
 
@@ -365,6 +364,7 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
               value={formData.partySize}
               onChange={(e) => setFormData({ ...formData, partySize: Number(e.target.value) })}
               className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50 transition-all duration-300 backdrop-blur-sm text-sm sm:text-base"
+              style={{ WebkitAppearance: 'none', MozAppearance: 'textfield', appearance: 'textfield' } as React.CSSProperties}
               required
             />
             <div className="absolute inset-y-0 right-0 flex items-center pr-3 sm:pr-4">
@@ -415,7 +415,7 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
       </button>
 
       {/* Success Message with Link */}
-      {reservationId && (
+      {responseConfirmUrl && (
         <div className="bg-green-500/10 border border-green-500/30 text-green-300 px-4 sm:px-6 py-3 sm:py-4 rounded-xl backdrop-blur-sm">
           <div className="flex items-start">
             <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -427,7 +427,7 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
                 <input
                   type="text"
                   readOnly
-                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/customer-page?reservationId=${reservationId}`}
+                  value={responseConfirmUrl}
                   className="flex-1 text-xs sm:text-sm bg-white/5 text-white px-2 sm:px-3 py-1 sm:py-2 rounded-lg border border-white/10"
                   onFocus={e => e.target.select()}
                 />
@@ -435,7 +435,7 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
                   type="button"
                   onClick={() => {
                     if (typeof window !== 'undefined') {
-                      navigator.clipboard.writeText(`${window.location.origin}/customer-page?reservationId=${reservationId}`);
+                      navigator.clipboard.writeText(responseConfirmUrl);
                     }
                   }}
                   className="p-1.5 sm:p-2 bg-green-600/20 text-green-300 rounded-lg hover:bg-green-600/30 transition-colors border border-green-500/30"

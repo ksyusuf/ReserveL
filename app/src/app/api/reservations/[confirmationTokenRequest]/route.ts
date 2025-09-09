@@ -8,24 +8,14 @@ import { connectDB, Reservation } from '@/lib/db';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { confirmationTokenRequest: string } }
 ) {
   try {
     await connectDB();
     
-    const reservationId = params.id;
-    
     // Rezervasyonu farklı alanlarda ara
-    let reservation = await Reservation.findOne({ reservationId: reservationId });
-    
-    if (!reservation) {
-      reservation = await Reservation.findOne({ contractReservationId: reservationId });
-    }
-    
-    if (!reservation) {
-      reservation = await Reservation.findOne({ blockchainReservationId: reservationId });
-    }
-    
+    let reservation = await Reservation.findOne({ confirmationToken: params.confirmationTokenRequest });
+    console.log(reservation);
     if (!reservation) {
       return NextResponse.json(
         { error: 'Rezervasyon bulunamadı' },
@@ -37,6 +27,7 @@ export async function GET(
     return NextResponse.json({
       reservation: {
         reservationId: reservation.reservationId,
+        blockchainReservationId: reservation.blockchainReservationId,
         businessId: reservation.businessId,
         businessName: reservation.businessName,
         customerId: reservation.customerId,

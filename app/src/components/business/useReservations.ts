@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useAppStore } from '@/store/useAppStore';
 import { autoNoShowCheck } from '@/lib/utils';
 import { updateReservationStatusOnContract } from '@/contracts/contractActions';
 import { Reservation } from '@/types/Reservation';
@@ -15,6 +16,7 @@ export default function useReservations({ onReservationCreated, lastCreatedReser
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [autoUpdatingAttendance, setAutoUpdatingAttendance] = useState<string | null>(null);
   const [reservationErrors, setReservationErrors] = useState<Record<string, string>>({});
+  const businessSession = useAppStore((s) => s.businessSession);
 
   // Yoruma özel URL oluşturucu
   const getApprovalUrl = useCallback((reservationId: string) => {
@@ -38,7 +40,9 @@ export default function useReservations({ onReservationCreated, lastCreatedReser
     try {
       setError(null);
       setIsLoading(true);
-      const response = await fetch('/api/reservations');
+      const businessId = businessSession?.walletAddress ? encodeURIComponent(businessSession.walletAddress) : '';
+      const url = businessId ? `/api/reservations?businessId=${businessId}` : '/api/reservations';
+      const response = await fetch(url);
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.error || 'Rezervasyonlar yüklenirken bir hata oluştu');
@@ -70,7 +74,7 @@ export default function useReservations({ onReservationCreated, lastCreatedReser
   useEffect(() => {
     fetchReservations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [businessSession?.walletAddress]);
 
   // Tek rezervasyon güncelleme fonksiyonu
   const getSingleReservation = async (reservationId: string) => {

@@ -14,12 +14,6 @@ export const BUSINESS_NAMES = [
   'Café de Paris'
 ];
 
-// Rastgele işletme adı seçen fonksiyon
-export const getRandomBusinessName = (): string => {
-  const randomIndex = Math.floor(Math.random() * BUSINESS_NAMES.length);
-  return BUSINESS_NAMES[randomIndex];
-};
-
 export const generateReservationId = (): string => {
   const timestamp = Date.now().toString(36);
   const randomStr = Math.random().toString(36).substring(2, 8);
