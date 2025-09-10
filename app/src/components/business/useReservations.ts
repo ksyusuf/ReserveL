@@ -4,15 +4,31 @@ import { autoNoShowCheck } from '@/lib/utils';
 import { updateReservationStatusOnContract } from '@/contracts/contractActions';
 import { Reservation } from '@/types/Reservation';
 
+export const updateReservationNote = async (reservationId: string, notes: string) => {
+  try {
+    const response = await fetch(`/api/reservations?id=${reservationId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ notes }),
+    });
+    if (!response.ok) {
+      throw new Error('Not güncellenirken bir hata oluştu');
+    }
+    return { error: false, data: await response.json()};
+  } catch (error) {
+    console.error('Error updating notes:', error);
+  }
+};
+
+
 export default function useReservations({ onReservationCreated, lastCreatedReservationId }: any) {
-  // Yorum ve log satırlarını silme!
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [updatingContract, setUpdatingContract] = useState<string | null>(null);
-  const [editingNotes, setEditingNotes] = useState<string | null>(null);
-  const [noteText, setNoteText] = useState('');
   const [autoUpdatingAttendance, setAutoUpdatingAttendance] = useState<string | null>(null);
   const [reservationErrors, setReservationErrors] = useState<Record<string, string>>({});
   const businessSession = useAppStore((s) => s.businessSession);
@@ -254,37 +270,6 @@ export default function useReservations({ onReservationCreated, lastCreatedReser
     }
   };
 
-  const updateReservationNotes = async (reservationId: string, notes: string) => {
-    try {
-      // Rezervasyon bazlı hatayı temizle
-      setReservationErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[reservationId];
-        return newErrors;
-      });
-      
-      const response = await fetch(`/api/reservations?id=${reservationId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ notes }),
-      });
-      if (!response.ok) {
-        throw new Error('Not güncellenirken bir hata oluştu');
-      }
-      await getSingleReservation(reservationId);
-      setEditingNotes(null);
-      setNoteText('');
-    } catch (error) {
-      console.error('Error updating notes:', error);
-      setReservationErrors(prev => ({
-        ...prev,
-        [reservationId]: 'Not güncellenirken bir hata oluştu. Lütfen tekrar deneyin.'
-      }));
-    }
-  };
-
   return {
     reservations,
     isLoading,
@@ -297,10 +282,5 @@ export default function useReservations({ onReservationCreated, lastCreatedReser
     updateReservationStatus,
     confirmPendingReservation,
     cancelConfirmedReservation,
-    updateReservationNotes,
-    editingNotes,
-    setEditingNotes,
-    noteText,
-    setNoteText,
   };
 } 

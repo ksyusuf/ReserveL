@@ -15,7 +15,6 @@ export async function GET(
     
     // Rezervasyonu farklı alanlarda ara
     let reservation = await Reservation.findOne({ confirmationToken: params.confirmationTokenRequest });
-    console.log(reservation);
     if (!reservation) {
       return NextResponse.json(
         { error: 'Rezervasyon bulunamadı' },

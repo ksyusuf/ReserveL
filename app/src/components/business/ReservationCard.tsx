@@ -3,16 +3,9 @@ import Button from '../ui/Button';
 import { formatDate, formatTime } from '@/lib/utils';
 import { Reservation } from '@/types/Reservation';
 import { createConfirmationUrl } from '@/lib/utils';
+import NoteArea from './NoteArea';
 
-// const [copiedId, setCopiedId] = useState<string | null>(null);
 
-// Panoya kopyalama fonksiyonu
-const handleCopyUrl = (confirmationToken: string) => {
-  const url =  createConfirmationUrl(confirmationToken); // createConfirmationUrl'in döndürdüğü değeri al
-  navigator.clipboard.writeText(url);
-  // setCopiedId(reservationId);
-  // setTimeout(() => setCopiedId(null), 1500);
-};
 
 export default function ReservationCard({
   reservation,
@@ -23,12 +16,6 @@ export default function ReservationCard({
   updateReservationStatus,
   confirmPendingReservation,
   cancelConfirmedReservation,
-  editingNotes,
-  setEditingNotes,
-  noteText,
-  setNoteText,
-  updateReservationNotes,
-  NoteEditor,
 }: {
   reservation: Reservation;
   updatingContract: string | null;
@@ -38,35 +25,18 @@ export default function ReservationCard({
   updateReservationStatus: (reservationId: string, status: 'confirmed' | 'cancelled') => Promise<void>;
   confirmPendingReservation: (reservationId: string) => Promise<void>;
   cancelConfirmedReservation: (reservationId: string) => Promise<void>;
-  editingNotes: string | null;
-  setEditingNotes: (reservationId: string | null) => void;
-  noteText: string;
-  setNoteText: (text: string) => void;
-  updateReservationNotes: (reservationId: string, notes: string) => Promise<void>;
-  NoteEditor: React.ComponentType<{
-    reservation: Reservation;
-    editingNotes: string | null;
-    noteText: string;
-    setNoteText: (text: string) => void;
-    updateReservationNotes: (reservationId: string, notes: string) => Promise<void>;
-    handleCancelEdit: () => void;
-  }>;
 }) {
-  // Yorum ve log satırlarını silme!
-  // ReservationList'teki map fonksiyonundaki JSX ve ilgili fonksiyonlar buraya taşındı
-  const handleEditNotes = (reservation: Reservation) => {
-    setEditingNotes(reservation.reservationId);
-    setNoteText(reservation.notes || '');
-  };
-  const handleSaveNotes = (reservationId: string) => {
-    updateReservationNotes(reservationId, noteText);
-  };
-  const handleCancelEdit = () => {
-    setEditingNotes(null);
-    setNoteText('');
-  };
 
   const [showAttendancePopup, setShowAttendancePopup] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>('');
+
+  // Panoya kopyalama fonksiyonu
+  const handleCopyUrl = (confirmationToken: string) => {
+    const url =  createConfirmationUrl(confirmationToken); // createConfirmationUrl'in döndürdüğü değeri al
+    navigator.clipboard.writeText(url);
+    setCopiedId(confirmationToken);
+    setTimeout(() => setCopiedId(null), 1500);
+  };
 
   const handleAttendanceAction = async (status: 'arrived' | 'no_show' | 'not_arrived') => {
     if (status === 'not_arrived') {
@@ -144,63 +114,17 @@ export default function ReservationCard({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16h8a2 2 0 002-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v6a2 2 0 002 2zm0 0v2a2 2 0 002 2h4a2 2 0 002-2v-2" /></svg>
               Onay URL
             </button>
-            {/* {copiedId === reservation.blockchainReservationId && (
+            {copiedId === reservation.confirmationToken && (
               <div className="absolute left-1/2 -translate-x-1/2 -top-8 bg-gray-800 text-white text-xs px-3 py-1 rounded shadow z-20 animate-fade-in">
                 Kopyalandı!
               </div>
-            )} */}
+            )}
           </div>
         </div>
+
         {/* SAĞ: Not kutusu */}
-        <div className="flex flex-col items-end w-full lg:w-auto lg:min-w-[220px] lg:max-w-xs">
-          <div className="mb-2 w-full lg:w-[220px] flex items-start">
-            {editingNotes === reservation.reservationId ? (
-              <NoteEditor
-                reservation={reservation}
-                editingNotes={editingNotes}
-                noteText={noteText}
-                setNoteText={setNoteText}
-                updateReservationNotes={updateReservationNotes}
-                handleCancelEdit={handleCancelEdit}
-              />
-            ) : reservation.notes ? (
-              <div className="relative p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg w-full flex flex-col justify-between min-h-[48px] sm:min-h-[60px] lg:min-h-[80px] max-h-[120px] lg:max-h-[160px]">
-                {/* Not düzenleme butonu - sağ üst köşede */}
-                <button
-                  type="button"
-                  className="absolute top-2 right-2 p-1.5 text-blue-400 hover:text-blue-200 hover:bg-blue-500/20 rounded-md transition-colors duration-200"
-                  onClick={() => handleEditNotes(reservation)}
-                  title="Notu düzenle"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
-                <div>
-                  <p className="text-sm text-blue-300 font-medium mb-1 flex items-center justify-between">
-                    <span>📝 Not:</span>
-                  </p>
-                  <p className="text-sm text-blue-200 italic break-words line-clamp-3 pr-8">"{reservation.notes}"</p>
-                </div>
-              </div>
-                         ) : (
-               <div className="relative w-full lg:w-auto lg:min-w-[220px] lg:max-w-xs">
-                 {/* Kompakt not ekleme butonu */}
-                 <button
-                   type="button"
-                   className="w-full lg:w-[220px] p-3 bg-blue-900/10 border border-blue-500/20 rounded-lg hover:bg-blue-900/20 hover:border-blue-500/30 transition-all duration-200 group flex items-center justify-center gap-2"
-                   onClick={() => handleEditNotes(reservation)}
-                   title="Not ekle"
-                 >
-                   <svg className="w-4 h-4 text-blue-400 group-hover:text-blue-300 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                   </svg>
-                   <span className="text-sm text-blue-400 group-hover:text-blue-300 font-medium transition-colors duration-200">Not Ekle</span>
-                 </button>
-               </div>
-             )}
-          </div>
-        </div>
+        <NoteArea reservation={reservation} />
+
       </div>
       {/* Action Buttons and Status */}
       <div className="flex flex-col sm:flex-row justify-between items-stretch pt-4 border-t border-gray-700/50 mt-4 gap-2">

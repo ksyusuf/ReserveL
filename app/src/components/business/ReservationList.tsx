@@ -3,7 +3,6 @@
 import Button from '../ui/Button';
 import ReservationCard from './ReservationCard';
 import ReservationStats from './ReservationStats';
-import NoteEditor from './NoteEditor';
 import useReservations from './useReservations';
 import { Reservation } from '@/types/Reservation';
 
@@ -25,11 +24,6 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
     updateReservationStatus,
     confirmPendingReservation,
     cancelConfirmedReservation,
-    updateReservationNotes,
-    editingNotes,
-    setEditingNotes,
-    noteText,
-    setNoteText,
   } = useReservations({ onReservationCreated, lastCreatedReservationId });
 
   if (isLoading) {
@@ -126,12 +120,6 @@ export default function ReservationList({ onReservationCreated, lastCreatedReser
                 updateReservationStatus={updateReservationStatus}
                 confirmPendingReservation={confirmPendingReservation}
                 cancelConfirmedReservation={cancelConfirmedReservation}
-                editingNotes={editingNotes}
-                setEditingNotes={setEditingNotes}
-                noteText={noteText}
-                setNoteText={setNoteText}
-                updateReservationNotes={updateReservationNotes}
-                NoteEditor={NoteEditor}
               />
             </div>
           ))}
