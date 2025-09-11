@@ -1,74 +1,40 @@
-# ReserveL Next.js Application
 
-This is the frontend/backend application for the ReserveL project, built with Next.js 14 ~ Stellar.
+<div align="center">
+   <h1>ReserveL Next.js Application</h1>
+</div>
 
+<div align="center" style="margin-top: 8px; color: #8A8A8A; font-size: 16px;">
+   <em>This project was originally developed as part of the HackPera hackathon, a 48-hour event held at the Pera Palace Hotel, in collaboration with Rise In and Stellar. ReserveL competed in the "Consumer dApps" category and has since been further developed into its current form.</em>
+</div>
 
-## Live Demo --> [https://reserve-l.vercel.app](https://reserve-l.vercel.app) 
+<div align="center" style="margin-top: 16px; display: flex; justify-content: center; align-items: center; gap: 24px; flex-wrap: wrap;">
+<a href="https://www.risein.com/"><img src="./app/public/rise-in-logo.svg" alt="Rise In" width="150"/></a>
+<a href="https://stellar.org/"><img src="./app/public/Stellar-Logo.png" alt="Rise In" width="150"/></a>
+</div>
+
+---
+
+## No-Shows: The Silent Revenue Killer
+
+The biggest challenges restaurants face with reservation management are overbookings, no-shows, technological inefficiencies, and poor communication among staff. These issues negatively impact businesses' profitability by leading to lost revenue, customer dissatisfaction, and reputational damage.
+
+## Project Purpose
+
+ReserveL, a Web3-based system, tackles the significant financial losses businesses face when customers fail to honor reservations. The system requires users to provide a deposit when making a reservation, which is transferred to the business if the customer is a no-show. This mechanism not only reduces business losses but also encourages customers to honor their commitments. Furthermore, customers who attend their reservations as planned are rewarded with loyalty tokens in their wallets. These tokens can be redeemed at other businesses within the ReserveL network across various sectors, offering added value and cross-sector benefits for loyal patrons.
+
+## Live Demo --> [https://reserve-l.vercel.app](https://reserve-l.vercel.app)
 
 ## Presentation --> [Presentation](https://docs.google.com/presentation/d/1jVmmhu-9s1BxH5Lb9E-g_E329t31vDygHdGbeKyrVuo/edit?slide=id.g36a2476a8a5_0_1680#slide=id.g36a2476a8a5_0_1680)
 
+
 ## Getting Started
 
-First, install the dependencies:
+For detailed setup instructions, see [app/README.md](app/README.md).
 
-```bash
-npm install
-# or
-yarn install
-```
-
-Then, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## Project Structure
-
-- `/src/app` - Next.js App Router pages and API routes
-- `/src/components` - React components
-- `/src/lib` - Utility functions and shared code
-
-## Environment Variables
-
-Create a `.env` file in the root directory with the following variables:
-
-```
-MONGODB_URI=your_mongodb_uri
-STELLAR_NETWORK=testnet
-```
-
-## Contract Initialization
-
-To initialize the smart contract (required for loyalty token functionality), follow these steps:
-
-1. **Open Browser Developer Tools:**
-   - Press `F12` or right-click and select "Inspect"
-   - Go to the "Console" tab
-
-2. **Navigate to Business Dashboard:**
-   - Go to `http://localhost:3000/business-dashboard`
-
-3. **Initialize Contract:**
-   - In the console, simply run:
-   ```javascript
-   initializeReserveLContract()
-   ```
-
-4. **Check Results:**
-   - The function will show success/error messages in the console
-   - A popup will also display the transaction hash if successful
-   - You can view the transaction on Stellar Expert using the provided link
-
-**Note:** Contract initialization is only needed once per deployment. After initialization, the loyalty token system will work automatically for all reservations.
 
 ## Learn More
 
-To learn more about the technologies used in this project:
+For more information about the technologies used in this project:
 
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Stellar Documentation](https://developers.stellar.org/docs)

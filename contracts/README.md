@@ -1,64 +1,68 @@
-# ReserveL Smart Contract
 
-Bu dizin, ReserveL projesinin Stellar Soroban akıllı kontratını içerir.
+<div align="center">
+  <a href="https://stellar.org/"><img src="../app/public/Stellar-Logo.png" alt="Rise In" width="150"/></a>
+  
+  <h1>ReserveL Akıllı Kontrat</h1>
+  <p><b>Rezervasyonlara sadakat, Web3 ile güvence altında!</b></p>
+</div>
+
+ReserveL, işletmelerin rezervasyonlarına gelmeyen müşterilerden kaynaklı maddi kayıplarını azaltmak için geliştirilmiş, Stellar Soroban üzerinde çalışan bir akıllı kontrattır. Rezervasyon süreçlerini şeffaf, güvenli ve otomatik hale getirir.
+
+---
+
+## Ekosistem Hakkında Kısa Bilgi
+
+Bu kontrat, <b>Stellar Soroban</b> akıllı kontrat platformunda çalışır. Soroban, Stellar ağı üzerinde merkeziyetsiz uygulamalar geliştirmek için modern, hızlı ve güvenli bir altyapı sunar. ReserveL kontratı, rezervasyon ve ödül süreçlerini zincir üzerinde yönetir ve tüm işlemler şeffaf şekilde izlenebilir.
+
+Kullanıcılar, cüzdanlarıyla etkileşime geçerek rezervasyon oluşturabilir, işletmeler ise sadakat token'ları ile ödüllendirme yapabilir. Tüm işlemler testnet ortamında denenebilir.
+
 
 ## Gereksinimler
 
-- Rust ve Cargo
-- Soroban CLI (sürüm 22.8.1 veya üzeri)
-- WSL (Windows için)
+- Rust & Cargo
+- Soroban CLI (v22.8.1+)
+- WSL (Windows için, önerilir)
 
-## Build ve Deploy Süreci
 
-### 1. Test Hesabı Oluşturma
+## Hızlı Başlangıç
 
-```bash
-# Test hesabı oluştur
-stellar keys generate alice
+1. **Test Hesabı Oluşturun:**
+  ```bash
+  stellar keys generate alice
+  stellar keys fund alice
+  stellar keys show alice
+  ```
+2. **Kontratı Derleyin:**
+  ```bash
+  rm -rf target/
+  stellar contract build
+  ```
+3. **Kontratı Deploy Edin:**
+  ```bash
+  stellar contract deploy \
+    --wasm target/wasm32v1-none/release/reservel_contract.wasm \
+    --source alice \
+    --network testnet
+  ```
+  Başarılı deploy sonrası terminalde kontrat ID'si gözükecektir. Bu ID ile kontratınızı yönetebilirsiniz.
 
-# Hesabı test tokenleri ile fonla
-stellar keys fund alice
-
-# Hesap bilgilerini kontrol et (secret key)
-stellar keys show alice
-```
-
-### 2. Kontratı Build Etme
-
-```bash
-# Eski build dosyalarını temizle
-rm -rf target/
-
-# Kontratı build et
-stellar contract build
-```
-
-### 3. Kontratı Deploy Etme
-
-```bash
-stellar contract deploy \
-  --wasm target/wasm32v1-none/release/reservel_contract.wasm \
-  --source alice \
-  --network testnet
-```
-
-Deploy işlemi başarılı olduğunda, terminal size bir kontrat ID'si verecektir. Bu ID'yi not alın, kontratınızla etkileşime geçmek için buna ihtiyacınız olacak.
 
 ## Kontrat ID
 
+Örnek:
 ```
 CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I
 ```
 
-## Kontrat İşlemleri
 
-Kontratı test etmek ve işlemler yapmak için Stellar Expert üzerinden kontrat adresini kontrol edebilirsiniz:
-https://stellar.expert/explorer/testnet/contract/CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I
+## Kontrat İşlemleri & Örnek Çağrılar
 
-### 4. Kontratı init Etme (initialize)
+Kontratı test etmek ve işlemler yapmak için [Stellar Expert](https://stellar.expert/explorer/testnet/contract/CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I) üzerinden kontrat adresini inceleyebilirsiniz.
+
+[https://stellar.expert/explorer/testnet/contract/CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I](https://stellar.expert/explorer/testnet/contract/CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I)
+
+### Kontratı Başlatma (initialize)
 ```bash
-stellar keys fund alice
-
 stellar contract invoke \
   --id CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I \
   --source-account alice \
@@ -68,7 +72,10 @@ stellar contract invoke \
   --loyalty-token-id CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC
 ```
 
-get business
+
+#### Diğer Örnek Çağrılar
+```bash
+# İşletme bilgisi sorgulama
 stellar contract invoke \
   --id CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I \
   --source-account alice \
@@ -76,7 +83,7 @@ stellar contract invoke \
   -- get_business \
   --business_name "yusuf"
 
-register business
+# İşletme kaydı
 stellar contract invoke \
   --id CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I \
   --source-account alice \
@@ -84,26 +91,32 @@ stellar contract invoke \
   -- register_business \
   --business_name "alice" \
   --wallet_address alice
+```
+
+---
+
+
+## Kontratta Bulunan Fonksiyonlar
+
+- **initialize**: Kontratı başlatır ve sahibi ile sadakat token adresini ayarlar.
+- **create_loyalty_token**: İşletme sahibi tarafından sadakat (loyalty) token'ı oluşturur.
+- **create_reservation**: Yeni bir rezervasyon oluşturur.
+- **confirm_reservation**: Rezervasyonu müşteri tarafından onaylar ve ödemeyi işletmeye aktarır.
+- **update_reservation_status**: Rezervasyonun durumunu (Completed, NoShow, Cancelled) günceller.
+- **get_reservation**: Belirli bir rezervasyonun detaylarını getirir.
+- **get_loyalty_token_id**: Kontrata kayıtlı sadakat token adresini döndürür.
+- **get_owner**: Kontrat sahibinin adresini döndürür.
+- **register_business**: Yeni bir işletme kaydı oluşturur.
+- **get_business**: İşletme adı ile kayıtlı işletme bilgilerini getirir.
+
+Her fonksiyonun detaylı kullanımı ve parametreleri için kontrat koduna bakabilirsiniz.
+
+---
+
 
 ## Önemli Notlar
 
 1. Her deploy işleminden önce kontratı yeniden build etmeyi unutmayın.
 2. Test hesabınızın yeterli XLM'ye sahip olduğundan emin olun.
 3. Kontrat ID'sini güvenli bir yerde saklayın.
-4. WSL üzerinde çalışırken Windows dizinlerine `/mnt/c/...` şeklinde erişebilirsiniz. 
-
-stellar cli ile örnek deploy;
-
-stellar contract invoke \
-  --id CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I \
-  --network testnet \
-  --source-account alice \
-  -- create_reservation \
-    --business_id GC5D6JM4YP3CEZNUZ6FMDD4L26XVUO3GKLCU4SHAYNRTMRWB6FMYRKBC \
-    --reservation_time 1730000000 \
-    --party_size 2 \
-    --payment_amount 10000000 \
-    --payment_asset GC5D6JM4YP3CEZNUZ6FMDD4L26XVUO3GKLCU4SHAYNRTMRWB6FMYRKBC
-
-cli ile deploy;
-stellar contract deploy   --wasm target/wasm32v1-none/release/reservel_contract.wasm   --network testnet --source-account SDBCUEVN5ITAW2UFXMB5RMQBPWBAZMELQU7LHTPXLLB6EFXISUO3LGHA
+4. WSL üzerinde çalışırken Windows dizinlerine `/mnt/c/...` şeklinde erişebilirsiniz.

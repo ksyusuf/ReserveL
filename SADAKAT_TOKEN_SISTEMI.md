@@ -46,59 +46,6 @@ ReserveL projesi, müşterilerin rezervasyon yapması ve işletmelerin bu rezerv
 4. Kontrat otomatik olarak 100 token'ı müşteri cüzdanına transfer eder
 5. `loyalty_issued` = true olarak işaretlenir
 
-## Teknik Detaylar
-
-### Kontrat Fonksiyonu
-```rust
-pub fn update_reservation_status(env: Env, reservation_id: u64, new_status: ReservationStatus) {
-    // ... kontrat kodu ...
-    match new_status {
-        ReservationStatus::Completed => {
-            if !reservation.loyalty_issued {
-                let loyalty_token_id: Address = env.storage().instance().get(&loyalty_key).expect("Loyalty token not set");
-                let loyalty_client = token::Client::new(&env, &loyalty_token_id);
-                let loyalty_amount: i128 = 100 * 10i128.pow(7); // 100 token
-                
-                let customer = reservation.customer_id.clone().expect("Customer not assigned");
-                loyalty_client.transfer(&minter_address, &customer, &loyalty_amount);
-                
-                reservation.loyalty_issued = true;
-            }
-            reservation.status = new_status;
-        }
-        // ... diğer durumlar ...
-    }
-}
-```
-
-### Frontend Kontrat Etkileşimi
-```typescript
-const updateContractStatus = async (reservationId: string, newStatus: 'Completed' | 'NoShow') => {
-    const tx = new TransactionBuilder(account, {
-        fee: BASE_FEE,
-        networkPassphrase: Networks.TESTNET,
-        memo: Memo.none(),
-    })
-        .addOperation(
-            Operation.invokeContractFunction({
-                contract: CONTRACT_ID,
-                function: 'update_reservation_status',
-                args: [
-                    nativeToScVal(reservationId, { type: 'u64' }),
-                    nativeToScVal(newStatus, { type: 'symbol' })
-                ],
-            })
-        )
-        .setTimeout(60)
-        .build();
-    
-    const { signedTxXdr } = await signTransaction(tx.toXDR(), {
-        networkPassphrase: Networks.TESTNET,
-    });
-    const signedTx = TransactionBuilder.fromXDR(signedTxXdr, Networks.TESTNET);
-    const txResponse = await server.sendTransaction(signedTx);
-};
-```
 
 ## Kullanıcı Arayüzü
 
@@ -140,3 +87,91 @@ const updateContractStatus = async (reservationId: string, newStatus: 'Completed
 3. **Token Kullanımı**: Token'ların işletmede kullanılması
 4. **Analytics**: Token verilme istatistikleri
 5. **Bildirimler**: Email/SMS ile token bildirimi 
+
+
+## Teknik Detaylar
+
+### Kontrat Fonksiyonu
+```rust
+pub fn update_reservation_status(env: Env, reservation_id: u64, new_status: ReservationStatus) {
+    // ... kontrat kodu ...
+    match new_status {
+        ReservationStatus::Completed => {
+            if !reservation.loyalty_issued {
+                let loyalty_key = Symbol::new(&env, "loyalty");
+                let loyalty_token_id: Address = env.storage().instance().get(&loyalty_key).expect(" Loyalty token not set");
+                // Token client'ını oluştur
+                let loyalty_client = token::Client::new(&env, &loyalty_token_id);
+                // Miktar belirle
+                let loyalty_amount: i128 = 100 * 10i128.pow(7); // 100 token
+                let business = reservation.business_id.clone();
+                business.require_auth();
+                // Müşteri adresini kontrol et
+                let customer = reservation.customer_id.clone();
+                let customer = customer.unwrap();
+                // Sadakat token'larını müşteriye aktar
+                loyalty_client.transfer(&business, &customer, &loyalty_amount);
+                reservation.loyalty_issued = true;
+            }
+            reservation.status = new_status.clone();
+        }
+        // ... diğer durumlar ...
+    }
+}
+```
+
+### Frontend Kontrat Etkileşimi
+```typescript
+export async function updateReservationStatusOnContract(reservationId: number, newStatus: 'Completed' | 'NoShow') {
+  try {
+    const { address } = await requestAccess();
+    if (!address) throw new Error('Cüzdan bağlantısı gerekli');
+    const server = new rpc.Server(SOROBAN_RPC_URL);
+    const account = await server.getAccount(address);
+    const tx = new TransactionBuilder(account, {
+      fee: BASE_FEE,
+      networkPassphrase: Networks.TESTNET,
+      memo: Memo.none(),
+    })
+      .addOperation(
+        Operation.invokeContractFunction({
+          contract: CONTRACT_ID,
+          function: 'update_reservation_status',
+          args: [
+            nativeToScVal(reservationId, { type: 'u64' }),
+            nativeToScVal(newStatus, { type: 'symbol' })
+          ],
+        })
+      )
+      .setTimeout(60)
+      .build();
+    const simResult: any = await server.simulateTransaction(tx);
+    if (typeof simResult.error === 'string') {
+      const errorCode = extractErrorCode(simResult.error);
+      if (errorCode !== undefined) {
+        const errorMsg = contractErrorMessages[errorCode as ContractError] ?? 'Bilinmeyen kontrat hatası';
+        return { success: false, error: errorMsg, code: errorCode };
+      }
+    }
+    const assembledTx = rpc.assembleTransaction(tx, simResult);
+    const xdr = assembledTx.build().toXDR();
+    const { signedTxXdr } = await signTransaction(xdr, {
+      networkPassphrase: Networks.TESTNET,
+    });
+    const signedTx = TransactionBuilder.fromXDR(signedTxXdr, Networks.TESTNET);
+    const txResponse = await server.sendTransaction(signedTx);
+    let finalResult = await CustomPollTransaction(txResponse.hash);
+
+    if (finalResult && finalResult.data.result.status === 'SUCCESS') {
+      return { success: true, hash: txResponse.hash };
+    }else{
+      console.error('İşlem zaman aşımına uğradı veya başarıyla tamamlanamadı.');
+      return { success: false, hash: txResponse.hash };
+    }
+
+  } catch (error) {
+    console.error('❌ updateReservationStatusOnContract hatası:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Bilinmeyen hata' };
+  }
+}
+```
