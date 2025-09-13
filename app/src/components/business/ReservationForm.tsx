@@ -25,6 +25,9 @@ const CONTRACT_ID = process.env.NEXT_PUBLIC_CONTRACT_ID!;
 const SOROBAN_RPC_URL = 'https://soroban-testnet.stellar.org';
 
 export default function ReservationForm({ onReservationCreated }: ReservationFormProps) {
+  // Global transparanlık değeri
+  const FORM_TRANSPARENCY = 'opacity-20';
+  const FORM_TRANSPARENT_CLASS = 'form-transparency';
   const [formData, setFormData] = useState<ReservationFormData>({
     customerName: '',
     customerPhone: '',
@@ -39,6 +42,8 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
   const [error, setError] = useState<string | null>(null);
   const businessSession = useAppStore(s => s.businessSession);
   const [responseConfirmUrl, setResponseConfirmUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>('');
+  const pushToast = useAppStore((s) => s.pushToast);
 
   function getReservationTimestamp(date: string, time: string) {
     if (!date || !time) return 0;
@@ -258,7 +263,26 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+  <div className="relative">
+    
+    <div className={`flex items-center space-x-3 mb-6 sm:mb-8 ${responseConfirmUrl ? FORM_TRANSPARENCY : ''} ${FORM_TRANSPARENT_CLASS}`}
+      style={responseConfirmUrl ? { pointerEvents: 'none' } : {}}
+    >
+      <div className="inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-600 to-blue-600 rounded-xl shadow-lg">
+        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+      </div>
+      <div>
+        <h3 className="text-lg sm:text-2xl font-bold text-white">Yeni Rezervasyon</h3>
+        <p className="text-gray-400 text-xs sm:text-sm">Müşteri rezervasyonu oluşturun</p>
+      </div>
+    </div>
+    <form
+      onSubmit={handleSubmit}
+      className={`space-y-4 sm:space-y-6 ${responseConfirmUrl ? FORM_TRANSPARENCY : ''} ${FORM_TRANSPARENT_CLASS}`}
+      style={responseConfirmUrl ? { pointerEvents: 'none' } : {}}
+    >
       {/* Error Message */}
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 text-red-300 px-3 sm:px-4 py-3 rounded-xl backdrop-blur-sm">
@@ -395,6 +419,7 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
         type="submit"
         disabled={loading}
         className="w-full flex justify-center items-center py-3 sm:py-4 px-4 sm:px-6 border border-transparent rounded-xl shadow-lg text-base sm:text-lg font-semibold text-white bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+        style={responseConfirmUrl ? { pointerEvents: 'none' } : {}}
       >
         {loading ? (
           <>
@@ -413,46 +438,84 @@ export default function ReservationForm({ onReservationCreated }: ReservationFor
           </>
         )}
       </button>
+  </form>
 
-      {/* Success Message with Link */}
-      {responseConfirmUrl && (
-        <div className="bg-green-500/10 border border-green-500/30 text-green-300 px-4 sm:px-6 py-3 sm:py-4 rounded-xl backdrop-blur-sm">
-          <div className="flex items-start">
-            <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  {/* Başarı Overlay */}
+  {responseConfirmUrl && (
+      <div className="fixed inset-0 flex justify-center items-center p-4 z-50">
+        <div className="bg-green-900/60 border border-green-950 text-white p-6 sm:p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center space-y-6 transform scale-95 animate-scale-in">
+          <div className="flex justify-center items-center">
+            <svg
+              className="w-16 h-16 text-green-400 animate-pulse"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
-            <div className="flex-1">
-              <p className="font-medium mb-2 text-sm sm:text-base">Rezervasyon başarıyla oluşturuldu!</p>
-              <div className="flex items-center space-x-2">
+          </div>
+          <p className="font-bold text-xl sm:text-2xl text-green-300">Başarılı!</p>
+          <p className="font-medium mb-2 text-sm sm:text-base">Rezervasyon başarıyla oluşturuldu!</p>
+          <div className="flex items-center gap-2">
+            <div className="relative flex flex-col items-center w-full gap-2">
+              {copied && (
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-green-700 text-white text-md px-4 py-1 rounded-xl shadow-lg z-30 animate-fade-in font-semibold flex items-center gap-1">
+                  <svg className="w-4 h-4 text-green-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Kopyalandı!
+                </div>
+              )}
+              <div className="flex items-center gap-2 w-full">
                 <input
                   type="text"
                   readOnly
                   value={responseConfirmUrl}
-                  className="flex-1 text-xs sm:text-sm bg-white/5 text-white px-2 sm:px-3 py-1 sm:py-2 rounded-lg border border-white/10"
-                  onFocus={e => e.target.select()}
+                  className="flex-1 w-full text-xs sm:text-md bg-white/10 text-white px-3 py-2 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-green-400/60 transition-all duration-200 shadow-inner cursor-pointer"
+                  onClick={() => {
+                    navigator.clipboard.writeText(responseConfirmUrl);
+                    setCopied('Kopyalandı!');
+                    setTimeout(() => setCopied(null), 1500);
+                  }}
                 />
                 <button
                   type="button"
                   onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      navigator.clipboard.writeText(responseConfirmUrl);
-                    }
+                    navigator.clipboard.writeText(responseConfirmUrl);
+                    setCopied('Kopyalandı!');
+                    setTimeout(() => setCopied(null), 1500);
                   }}
-                  className="p-1.5 sm:p-2 bg-green-600/20 text-green-300 rounded-lg hover:bg-green-600/30 transition-colors border border-green-500/30"
-                  title="Kopyala"
+                  className="flex-shrink-0 px-4 py-2 bg-gradient-to-r from-green-500/80 to-blue-500/80 text-white rounded-lg hover:from-green-600 hover:to-blue-600 shadow-md text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-400/60"
                 >
-                  <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  <svg className="w-4 h-4 mr-1 inline-block align-text-bottom" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" className="stroke-current text-green-300" />
+                    <rect x="3" y="3" width="13" height="13" rx="2" ry="2" className="stroke-current text-white" />
                   </svg>
+                  Kopyala
                 </button>
               </div>
-              <p className="text-xs text-green-300/80 mt-2">
-                Bu linki müşteriyle paylaşarak rezervasyonun onaylanmasını sağlayabilirsiniz.
-              </p>
             </div>
           </div>
+          <p className="text-sm text-left text-green-300/80 mt-2">
+            Bu linki müşteriyle paylaşarak rezervasyonun onaylanmasını sağlayabilirsiniz.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setResponseConfirmUrl(null);
+            }}
+            className="w-full flex justify-center items-center py-3 sm:py-4 px-4 sm:px-6 border border-transparent rounded-xl shadow-lg text-base sm:text-md font-semibold text-white bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+          >
+            Yeni Rezervasyon Oluştur
+          </button>
         </div>
-      )}
-    </form>
+      </div>
+    )}
+  </div>
   );
 }

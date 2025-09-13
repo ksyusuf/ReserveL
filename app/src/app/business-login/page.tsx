@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getBusinessFromContract } from '@/contracts/contractActions';
-import { checkWalletConnection } from '@/lib/wallet';
+import { checkWalletConnection, connectWallet } from '@/lib/wallet';
 import { useAppStore } from '@/store/useAppStore';
 
 export default function BusinessLoginPage() {
   const [businessName, setBusinessName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<{type: "error" | "warning"; message: string;} | null>(null);
   const router = useRouter();
   const setBusinessSession = useAppStore((s) => s.setBusinessSession);
   const setWalletConnected = useAppStore((s) => s.setWalletConnected);
@@ -20,7 +20,7 @@ export default function BusinessLoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
+    setError({ type: 'error', message: '' });
 
     try {
       // 1. Freighter cüzdanından adres al ve store'a yaz
@@ -28,10 +28,15 @@ export default function BusinessLoginPage() {
       if (!walletStatus.connected || !walletStatus.address) {
         setWalletConnected(false);
         setWalletAddress(null);
-        setWalletError(walletStatus.error ?? 'Cüzdan bağlı değil');
-        setError('Cüzdan bağlı değil. Lütfen Freighter ile bağlanın.');
-        setIsLoading(false);
-        return;
+        setWalletError(walletStatus.error ?? 'Cüzdan bağlı değil.');
+        setError({ type: 'warning', message: 'Cüzdan bağlı değil. Lütfen Freighter ile bağlanın.' });
+        setIsLoading(true);
+        const walletResult = await connectWallet();
+        
+        if (!walletResult.address) {
+          setIsLoading(false);
+          throw new Error('Cüzdan bağlantısı başarısız');
+        }
       }
       setWalletConnected(true);
       setWalletAddress(walletStatus.address ?? null);
@@ -44,7 +49,7 @@ export default function BusinessLoginPage() {
         body: JSON.stringify({ businessName, walletAddress: walletStatus.address }),
       });
       if (!businessResponse.ok) {
-        setError('İşletme bulunamadı veya cüzdan adresi eşleşmiyor');
+        setError({ type: 'error', message: 'İşletme bulunamadı veya cüzdan adresi eşleşmiyor.' });
         setIsLoading(false);
         return;
       }
@@ -57,7 +62,7 @@ export default function BusinessLoginPage() {
       const contractResult = await getBusinessFromContract(businessName);
       
       if (!contractResult.success) {
-        setError(String(contractResult.error));
+        setError({ type: 'error', message: String(contractResult.error) });
         setIsLoading(false);
         return;
       }
@@ -67,12 +72,12 @@ export default function BusinessLoginPage() {
 
       // 4. Hem DB hem kontrat adresi ile Freighter adresini eşleştir
       if (contractResult.walletAddress !== businessData.walletAddress) {
-        setError('Cüzdan adresi eşleşmiyor');
+        setError({ type: 'error', message: 'Cüzdan adresi eşleşmiyor.' });
         setIsLoading(false);
         return;
       }
       if (walletStatus.address !== businessData.walletAddress) {
-        setError('Tarayıcı cüzdan adresi bu işletmeyle eşleşmiyor');
+        setError({ type: 'error', message: 'Tarayıcı cüzdan adresi bu işletmeyle eşleşmiyor.' });
         setIsLoading(false);
         return;
       }
@@ -92,7 +97,7 @@ export default function BusinessLoginPage() {
       
     } catch (error) {
       console.error('❌ Giriş hatası:', error);
-      setError('Bir hata oluştu. Lütfen tekrar deneyin.');
+      setError({ type: 'error', message: 'Bir hata oluştu. Lütfen tekrar deneyin.' });
       setIsLoading(false);
     }
   };
@@ -134,15 +139,32 @@ export default function BusinessLoginPage() {
         <form className="space-y-8" onSubmit={handleSubmit}>
           {/* Error Message */}
           {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-300 px-6 py-4 rounded-xl backdrop-blur-sm">
+            <div
+              className={`px-6 py-4 rounded-xl backdrop-blur-sm border
+                ${error.type === "error"
+                  ? "bg-red-500/10 border-red-500/30 text-red-300"
+                  : "bg-yellow-500/10 border-yellow-500/30 text-yellow-300"
+                }`}
+            >
               <div className="flex items-center">
-                <svg className="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className="w-5 h-5 mr-3 flex-shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
-                {error}
+                {error.message}
               </div>
             </div>
           )}
+
 
           {/* Business Name Input */}
           <div className="space-y-2">
