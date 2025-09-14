@@ -4,13 +4,28 @@
    <p><b>Web3 ile Rezervasyon Yönetimi</b></p>
 </div>
 
-<div align="center" style="margin-top: 16px; display: flex; justify-content: center; align-items: center; gap: 24px; flex-wrap: wrap;">
-  <a href="https://react.dev/"><img src="../app/public/react-logo.svg" alt="React" width="110"/></a>
-  <a href="https://www.mongodb.com/"><img src="../app/public/mongodb-logo.png" alt="MongoDB" width="120"/></a>
-  <a href="https://nodejs.org/tr"><img src="../app//public/nodejs-logo.svg" alt="Node.js" width="80"></a>
-  <a href="https://tailwindcss.com/"><img src="../app/public/tailwindcss-logo.svg" alt="Tailwind CSS" height="25"/></a>
-  <a href="https://nextjs.org/"><img src="../app/public/nextjs-white-logo.png" alt="Next.js" height="25"/></a>
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" valign="middle">
+        <a href="https://react.dev/"><img src="../app/public/react-logo.svg" alt="React" width="110"/></a>
+      </td>
+      <td align="center" valign="middle">
+        <a href="https://www.mongodb.com/"><img src="../app/public/mongodb-logo.png" alt="MongoDB" width="120"/></a>
+      </td>
+      <td align="center" valign="middle">
+        <a href="https://nodejs.org/tr"><img src="../app/public/nodejs-logo.svg" alt="Node.js" width="80"/></a>
+      </td>
+      <td align="center" valign="middle">
+        <a href="https://tailwindcss.com/"><img src="../app/public/tailwindcss-logo.svg" alt="Tailwind CSS" width="160"/></a>
+      </td>
+      <td align="center" valign="middle">
+        <a href="https://nextjs.org/"><img src="../app/public/nextjs-white-logo.png" alt="Next.js" height="20"/></a>
+      </td>
+    </tr>
+  </table>
 </div>
+
 
 ---
 
