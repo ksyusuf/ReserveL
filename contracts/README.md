@@ -1,6 +1,6 @@
 
 <div align="center">
-  <a href="https://stellar.org/"><img src="../app/public/Stellar-Logo.png" alt="Rise In" width="150"/></a>
+  <a href="https://stellar.org/"><img src="../app/public/Stellar-Logo.png" alt="Rise In" width="170"/></a>
   
   <h1>ReserveL Akıllı Kontrat</h1>
   <p><b>Rezervasyonlara sadakat, Web3 ile güvence altında!</b></p>

@@ -8,8 +8,8 @@
 </div>
 
 <div align="center" style="margin-top: 16px; display: flex; justify-content: center; align-items: center; gap: 24px; flex-wrap: wrap;">
-<a href="https://www.risein.com/"><img src="./app/public/rise-in-logo.svg" alt="Rise In" width="150"/></a>
-<a href="https://stellar.org/"><img src="./app/public/Stellar-Logo.png" alt="Rise In" width="150"/></a>
+<a href="https://www.risein.com/"><img src="./app/public/rise-in-logo.svg" alt="Rise In" width="170"/></a>
+<a href="https://stellar.org/"><img src="./app/public/Stellar-Logo.png" alt="Rise In" width="170"/></a>
 </div>
 
 ---
