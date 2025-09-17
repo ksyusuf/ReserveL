@@ -44,27 +44,27 @@ Kullanıcılar, cüzdanlarıyla etkileşime geçerek rezervasyon oluşturabilir,
     --source alice \
     --network testnet
   ```
-  Başarılı deploy sonrası terminalde kontrat ID'si gözükecektir. Bu ID ile kontratınızı yönetebilirsiniz.
+  Başarılı deploy sonrası terminalde kontrat ID'si gözükecektir. Bu ID ile kontratınızı yönetebilirsiniz. App environment'i içeriindeki kontrat id alanını düzenlemeyi unutmayın.
 
 
 ## Kontrat ID
 
 Örnek:
 ```
-CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I
+CASQJSF3PG6MTCVMHXRN5AZZFGEB7J4LMPVYVHCDZ3BYAPPRAAXBU2AM
 ```
 
 
 ## Kontrat İşlemleri & Örnek Çağrılar
 
-Kontratı test etmek ve işlemler yapmak için [Stellar Expert](https://stellar.expert/explorer/testnet/contract/CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I) üzerinden kontrat adresini inceleyebilirsiniz.
+Kontratı test etmek ve işlemler yapmak için [Stellar Expert](https://stellar.expert/explorer/testnet/contract/CASQJSF3PG6MTCVMHXRN5AZZFGEB7J4LMPVYVHCDZ3BYAPPRAAXBU2AM) üzerinden kontrat adresini inceleyebilirsiniz.
 
-[https://stellar.expert/explorer/testnet/contract/CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I](https://stellar.expert/explorer/testnet/contract/CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I)
+[https://stellar.expert/explorer/testnet/contract/CASQJSF3PG6MTCVMHXRN5AZZFGEB7J4LMPVYVHCDZ3BYAPPRAAXBU2AM](https://stellar.expert/explorer/testnet/contract/CASQJSF3PG6MTCVMHXRN5AZZFGEB7J4LMPVYVHCDZ3BYAPPRAAXBU2AM)
 
 ### Kontratı Başlatma (initialize)
 ```bash
 stellar contract invoke \
-  --id CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I \
+  --id CASQJSF3PG6MTCVMHXRN5AZZFGEB7J4LMPVYVHCDZ3BYAPPRAAXBU2AM \
   --source-account alice \
   --network testnet \
   -- initialize \
@@ -77,7 +77,7 @@ stellar contract invoke \
 ```bash
 # İşletme bilgisi sorgulama
 stellar contract invoke \
-  --id CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I \
+  --id CASQJSF3PG6MTCVMHXRN5AZZFGEB7J4LMPVYVHCDZ3BYAPPRAAXBU2AM \
   --source-account alice \
   --network testnet \
   -- get_business \
@@ -85,7 +85,7 @@ stellar contract invoke \
 
 # İşletme kaydı
 stellar contract invoke \
-  --id CACV2ECSIDU37E5OD3X6NEQ4C7QXER3MRVPWNIISB5PV6NDKM7OP3U7I \
+  --id CASQJSF3PG6MTCVMHXRN5AZZFGEB7J4LMPVYVHCDZ3BYAPPRAAXBU2AM \
   --source-account alice \
   --network testnet \
   -- register_business \
